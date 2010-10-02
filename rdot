@@ -1,0 +1,681 @@
+#!/usr/bin/ruby -Ku
+
+require "optparse"
+
+RD_VERSION = "0.9b"
+if $stdout.stat.chardev?
+	RD_TITLE = "\e[1mRDot v#{RD_VERSION}\e[0m - GraphViz class diagrams for Ruby"
+else
+	RD_TITLE = "RDot v#{RD_VERSION} - GraphViz class diagrams for Ruby"
+end
+RD_AUTHOR = "Ivan Shikhalev\n\tmailto:shikhalev@gmail.com"
+RD_LICENSE = "GNU General Public License\n\thttp://www.gnu.org/licenses/gpl.html"
+
+module RDot
+
+	module Opts
+
+		@@excludes = []
+		@@includes = []
+		@@output = $stdout
+		@@title = nil
+		@@color_class_preloaded = "mediumseagreen"
+		@@color_exception_preloaded = "chocolate"
+		@@color_module_preloaded = "steelblue"
+		@@color_class_evaluated = "aquamarine"
+		@@color_exception_evaluated = "lightpink"
+		@@color_class = "mediumaquamarine"
+		@@color_exception = "lightcoral"
+		@@color_module = "skyblue"
+		@@color_inherited = "steelblue"
+		@@color_included = "skyblue"
+		@@color_extended = "olivedrab"
+		@@show_protected = false
+		@@show_private = false
+
+		class << self
+
+			def excludes
+				@@excludes
+			end
+
+			def includes
+				@@includes
+			end
+
+			def output
+				@@output
+			end
+
+			def title
+				@@title
+			end
+
+			def color_class_preloaded
+				@@color_class_preloaded
+			end
+
+			def color_exception_preloaded
+				@@color_exception_preloaded
+			end
+
+			def color_module_preloaded
+				@@color_module_preloaded
+			end
+
+			def color_class_evaluated
+				@@color_class_evaluated
+			end
+
+			def color_exception_evaluated
+				@@color_exception_evaluated
+			end
+
+			def color_class
+				@@color_class
+			end
+
+			def color_exception
+				@@color_exception
+			end
+
+			def color_module
+				@@color_module
+			end
+
+			def color_inherited
+				@@color_inherited
+			end
+
+			def color_included
+				@@color_included
+			end
+
+			def color_extended
+				@@color_extended
+			end
+
+			def show_protected
+				@@show_protected
+			end
+
+			def show_private
+				@@show_private
+			end
+		end
+
+		@@options = OptionParser.new
+
+		@@options.on("-h","-?","--help","Show this help.") do
+			puts "#{RD_TITLE}\n\n#{@@options.to_s}"
+			exit 0
+		end
+		@@options.on("-I","--info","=[INFO]",
+					Array,
+					"Show program's information - set:",
+					"\t\'about\' - title with version;",
+					"\t\'author\' - author's name with e-mail;",
+					"\t\'license\' - license with URL;",
+					"\t\'usage\' - command line options;",
+					"\t\'version\' - program's version.",
+					"or one of predefs:",
+					"\t\'all\' <=> \'about,author,license,usage\';",
+					"\t\'help\' <=> \'about,usage\';",
+					"\t\'info\' (or nothing) <=> \'about,author,license\'.") do |value|
+			if value == nil || value == ["info"]
+				value = ["about","author","license"]
+			elsif value == ["all"]
+				value = ["about","author","license","usage"]
+			elsif value == ["help"]
+				value = ["about","usage"]
+			end
+			if value.include? "about"
+				if value.size == 1
+					puts "#{RD_TITLE}"
+				else
+					puts "#{RD_TITLE}\n\n"
+				end
+			else
+				if value.include? "version"
+					if value.size == 1
+						puts "#{RD_VERSION}"
+					else
+						puts "Version: #{RD_VERSION}\n\n"
+					end
+				end
+			end
+			if value.include? "author"
+				if value.size == 1
+					puts "#{RD_AUTHOR}"
+				else
+					puts "Author: #{RD_AUTHOR}"
+				end
+			end
+			if value.include? "license"
+				if value.size == 1
+					puts "#{RD_LICENSE}"
+				else
+					puts "License: #{RD_LICENSE}"
+				end
+			end
+			if value.include? "usage"
+				if value.size == 1 || (value.size == 2 && value.include?("about"))
+					puts "#{@@options.to_s}"
+				else
+					puts "\n#{@@options.to_s}"
+				end
+			end
+			exit 0
+		end
+		@@options.on("--about","Show program's title.") do
+			puts "#{RD_TITLE}"
+			exit 0
+		end
+		@@options.on("--author","Show program's author.") do
+			puts "#{RD_AUTHOR}"
+			exit 0
+		end
+		@@options.on("-L","--license","Show program's license.") do
+			puts "#{RD_LICENSE}"
+			exit 0
+		end
+		@@options.on("--usage","Show command line options.") do
+			puts "#{@@options.to_s}"
+			exit 0
+		end
+		@@options.on("-V","--version","Show program's version.") do
+			puts "#{RD_VERSION}"
+			exit 0
+		end
+		@@options.on("-x","--exclude","-p","--preload","=LIBS",Array,
+					"Exclude libraries from processing.") do |value|
+			@@excludes += value
+		end
+		@@options.on("-i","--include","--input","-l","--load","=LIBS",Array,
+					"Include libraries to processing.") do |value|
+			@@includes += value
+		end
+		@@options.on("-o","--output","=[FILE]",String,
+					"Send output to file instead of stdout.",
+					"\'rdot.dot\' if not specified.") do |value|
+			if value == nil
+				value = 'rdot.dot'
+			end
+			@@output = File.open(value,"w")
+		end
+		@@options.on("-t","--title","=TITLE",String,
+					"Set title of class diagram.") do |value|
+			@@title = value
+		end
+		@@options.on("--color-module","=COLOR",String,
+					"Specify color for highlight module nodes.",
+					"Color may by in #RRGGBB form or one of listed at",
+					"\thttp://graphviz.org/doc/info/colors.html.") do |value|
+			@@color_module = value
+		end
+		@@options.on("--color-module-preloaded","=COLOR",String,
+					"Color for highlight preloaded modules.") do |value|
+			@@color_module_preloaded = value
+		end
+		@@options.on("--color-class","=COLOR",String,
+					"Color for class nodes.") do |value|
+			@@color_class = value
+		end
+		@@options.on("--color-class-evaluated","=COLOR",String,
+					"Color for evaluated classes.") do |value|
+			@@color_class_evaluated = value
+		end
+		@@options.on("--color-class-preloaded","=COLOR",String,
+					"Color for preloaded classes.") do |value|
+			@@color_class_preloaded = value
+		end
+		@@options.on("--color-exception","=COLOR",String,
+					"Color for exception classes.") do |value|
+			@@color_exception = value
+		end
+		@@options.on("--color-exception-evaluated","=COLOR",String,
+					"Color for evaluated exception classes.") do |value|
+			@@color_exception_evaluated = value
+		end
+		@@options.on("--color-exception-preloaded","=COLOR",String,
+					"Color for preloaded exception classes.") do |value|
+			@@color_exception_preloaded = value
+		end
+		@@options.on("--color-inherited","=COLOR",String,
+					"Color for inheritance edges.") do |value|
+			@@color_inherited = value
+		end
+		@@options.on("--color-included","=COLOR",String,
+					"Color for inclusion edges.") do |value|
+			@@color_included = value
+		end
+		@@options.on("--color-extended","=COLOR",String,
+					"Color for extension edges.") do |value|
+			@@color_extended = value
+		end
+		@@options.on("--show-protected","=[BOOL]",TrueClass,
+					"Show public and protected methods.") do |value|
+			if value == nil
+				value = true
+			end
+			@@show_protected = value
+		end
+		@@options.on("--show-private","=[BOOL]",TrueClass,
+					"Show public, protected and private methods.") do |value|
+			if value == nil
+				value = true
+			end
+			@@show_private = value
+			@@show_protected = value
+		end
+		rest = @@options.parse(ARGV)
+		rest.each do |value|
+			@@includes += value.split(",")
+		end
+	end
+
+	@@modules = {}
+	@@processed = []
+	@@preloaded = []
+
+	class << self
+
+#		def modules
+#			@@modules
+#		end
+
+		def registed_preloaded(mod)
+			@@preloaded << mod
+		end
+
+		def register(args)
+			mod = args[:module]
+			clr = args[:caller]
+			if mod != nil
+				if @@modules[mod] == nil
+					@@modules[mod] = {}
+				end
+				ext = args[:extension]
+				if ext != nil
+					if @@modules[mod][:extensions] == nil
+						@@modules[mod][:extensions] = {}
+					end
+					if @@modules[mod][:extensions][ext] == nil
+						@@modules[mod][:extensions][ext] = []
+					end
+					if clr != nil
+						@@modules[mod][:extensions][ext] << clr
+					end
+				end
+				inc = args[:inclusion]
+				if inc != nil
+					if @@modules[mod][:inclusions] == nil
+						@@modules[mod][:inclusions] = {}
+					end
+					if @@modules[mod][:inclusions][inc] == nil
+						@@modules[mod][:inclusions][inc] = []
+					end
+					if clr != nil
+						@@modules[mod][:inclusions][inc] << clr
+					end
+				end
+				sup = args[:superclass]
+				if sup != nil
+					@@modules[mod][:superclass] = sup
+					if @@modules[mod][:definition] == nil
+						@@modules[mod][:definition] = []
+					end
+					if clr != nil
+						@@modules[mod][:definition] << clr
+					end
+				end
+				mth = args[:method]
+				if mth != nil
+					if @@modules[mod][:instance] == nil
+						@@modules[mod][:instance] = {}
+					end
+					if @@modules[mod][:instance][mth] == nil
+						@@modules[mod][:instance][mth] = []
+					end
+					if clr != nil
+						@@modules[mod][:instance][mth] << clr
+					end
+				end
+				mth = args[:singleton_method]
+				if mth != nil
+					if @@modules[mod][:class] == nil
+						@@modules[mod][:class] = {}
+					end
+					if @@modules[mod][:class][mth] == nil
+						@@modules[mod][:class][mth] = []
+					end
+					if clr != nil
+						@@modules[mod][:class][mth] << clr
+					end
+				end
+			end
+		end
+
+		def node_name(mod)
+			mod.inspect.tr("#<>(): ","_")
+		end
+
+		def evaluated?(mod)
+			info = @@modules[mod]
+			if info == nil
+				false
+			else
+				clr = info[:definition]
+				if clr == nil
+					false
+				else
+					clr = clr[0]
+					if clr == nil
+						false
+					else
+						(/eval/ === clr[0])
+					end
+				end
+			end
+		end
+
+		def node_color(mod)
+			if @@preloaded.include? mod
+				if Class === mod
+					if mod <= Exception
+						RDot::Opts.color_exception_preloaded
+					else
+						RDot::Opts.color_class_preloaded
+					end
+				else
+					RDot::Opts.color_module_preloaded
+				end
+			else
+				if evaluated? mod
+					if Class === mod
+						if mod <= Exception
+							RDot::Opts.color_exception_evaluated
+						else
+							RDot::Opts.color_class_evaluated
+						end
+					else
+						RDot::Opts.color_module
+					end
+				else
+					if Class === mod
+						if mod <= Exception
+							RDot::Opts.color_exception
+						else
+							RDot::Opts.color_class
+						end
+					else
+						RDot::Opts.color_module
+					end
+				end
+			end
+		end
+
+		def get_line_hash(d,check=true)
+			if check
+				d.each do |dl|
+					if ! (/eval/ === dl || /require/ === dl)
+						da = dl.split(":")
+						return {:file => da[0], :line => da[1]}
+					end
+				end
+				return {:file => "", :line => ""}
+			else
+				dl = d[0]
+				da = dl.split(":")
+				return {:file => da[0], :line => da[1]}
+			end
+		end
+
+		def module_places(mod)
+			info = @@modules[mod]
+			if info == nil
+				""
+			else
+				defs = info[:definition]
+				if defs == nil
+					""
+				else
+					tds = []
+					defs.each do |d|
+						dh = get_line_hash(d)
+						tds << "<TD ALIGN=\"LEFT\">#{dh[:file]}</TD>"+
+								"<TD ALIGN=\"RIGHT\">#{dh[:line]}</TD>"
+					end
+					"<TR><TD COLSPAN=\"2\" ROWSPAN=\"#{tds.size}\"> </TD>#{tds.join("</TR><TR>")}</TR>"
+				end
+			end
+		end
+
+		def method_defs(defs)
+			tds = []
+			defs.each do |d|
+				dh = get_line_hash(d,false)
+				tds << "<TD ALIGN=\"LEFT\">#{dh[:file]}</TD>"+
+						"<TD ALIGN=\"RIGHT\">#{dh[:line]}</TD>"
+			end
+			tds.join("</TR><TR>")
+		end
+
+		def module_class_methods(mod)
+			info = @@modules[mod]
+			if info == nil
+				""
+			else
+				mths = info[:class]
+				if mths == nil
+					""
+				else
+					tds = []
+					rows = 0
+#			$stderr << "\e[1m#{mths.inspect}\e[0m\n"
+					mths.sort.each do |key,value|
+						if mod.public_methods.include?(key.to_s) ||
+								(mod.protected_methods.include?(key.to_s) && RDot::Opts.show_protected) ||
+								(mod.private_methods.include?(key.to_s) && RDot::Opts.show_private)
+							tds << "<TD ALIGN=\"LEFT\" VALIGN=\"TOP\" ROWSPAN=\"#{value.size}\">#{key.to_s.escape}</TD>#{method_defs(value)}"
+							rows += value.size
+						end
+					end
+					if rows > 0
+						"<TR><TD ALIGN=\"RIGHT\" VALIGN=\"TOP\" ROWSPAN=\"#{rows}\">cls:</TD>#{tds.join("</TR><TR>")}</TR>"
+					else
+						""
+					end
+				end
+			end
+		end
+
+		def module_instance_methods(mod)
+			info = @@modules[mod]
+			if info == nil
+				""
+			else
+				mths = info[:instance]
+				if mths == nil
+					""
+				else
+					tds = []
+					rows = 0
+					mths.sort.each do |key,value|
+						if mod.public_method_defined?(key) ||
+								(mod.private_method_defined?(key) && RDot::Opts.show_private) ||
+								(mod.protected_method_defined?(key) && RDot::Opts.show_protected)
+							tds << "<TD ALIGN=\"LEFT\" VALIGN=\"TOP\" ROWSPAN=\"#{value.size}\">#{key.to_s.escape}</TD>#{method_defs(value)}"
+							rows += value.size
+						end
+					end
+					if rows > 0
+						"<TR><TD ALIGN=\"RIGHT\" VALIGN=\"TOP\" ROWSPAN=\"#{rows}\">obj:</TD>#{tds.join("</TR><TR>")}</TR>"
+					else
+						""
+					end
+				end
+			end
+		end
+
+		def node_label(mod)
+			"<<TABLE CELLBORDER=\"0\" CELLSPACING=\"0\" CELLPADDING=\"2\">"+
+					"<TR><TD TITLE=\"Ololo Tralala\" ALIGN=\"RIGHT\" BGCOLOR=\"#{node_color(mod)}\"><FONT POINT-SIZE=\"12\">#{mod.class.name.downcase}</FONT></TD>"+
+					"<TD COLSPAN=\"3\" ALIGN=\"LEFT\" BGCOLOR=\"#{node_color(mod)}\"><FONT POINT-SIZE=\"12\">#{mod.inspect.escape}</FONT></TD>"+
+					"</TR>"+
+					module_places(mod)+
+					module_class_methods(mod)+
+					module_instance_methods(mod)+
+					"</TABLE>>"
+		end
+
+		def module_modules(mod)
+			ancs = mod.ancestors
+			ancs -= [mod]
+			if Class === mod
+				if mod.superclass != nil
+					ancs -= mod.superclass.ancestors
+				end
+			end
+			result = ancs.clone
+			ancs.each do |anc|
+				result -= (anc.ancestors - [anc])
+			end
+			result
+		end
+
+		def process_module(mod)
+			if ! @@processed.include?(mod)
+				@@processed << mod
+				RDot::Opts.output << "\t#{node_name(mod)}[label=#{node_label(mod)}];\n"
+				delta = [mod]
+				if Class === mod
+					if mod.superclass != nil
+						process_module(mod.superclass)
+						RDot::Opts.output << "\t\t#{node_name(mod.superclass)} -> #{node_name(mod)}[color=\"#{RDot::Opts.color_inherited}\",weight=\"1.2\"];\n"
+					end
+				end
+				info = @@modules[mod]
+				if info != nil
+					exts = info[:extensions]
+					if exts != nil
+						exts.each do |key,value|
+							process_module(key)
+							RDot::Opts.output << "\t\t#{node_name(key)} -> #{node_name(mod)}[color=\"#{RDot::Opts.color_extended}\"];\n"
+						end
+					end
+					ancs = module_modules(mod)
+#					incs = info[:inclusions]
+					if ancs != nil
+						ancs.each do |key,value|
+							process_module(key)
+							RDot::Opts.output << "\t\t#{node_name(key)} -> #{node_name(mod)}[color=\"#{RDot::Opts.color_included}\"];\n"
+						end
+					end
+				end
+			end
+		end
+
+		def graph_label
+			if RDot::Opts.title == nil
+				"\"Ruby Classes: #{RDot::Opts.includes.sort.join(", ")}\""
+			else
+				"\"#{RDot::Opts.title}\""
+			end
+		end
+
+		def process
+			RDot::Opts.output << "digraph RDot {\n"
+			RDot::Opts.output << "\tgraph[rankdir=LR,\n\t\tsplines=true,\n"+
+					"\t\tfontname=\"Droid Sans\",\n"+
+					"\t\tfontsize=24,\n\t\tlabelloc=t,\n"+
+					"\t\tlabel=#{graph_label}\n\t];\n"
+			RDot::Opts.output << "\tnode[shape=plaintext,\n"+
+					"\t\tfontname=\"Droid Sans Mono\",\n\t\tfontsize=9\n\t];\n"
+			RDot::Opts.output << "\tedge[dir=back,\n\t\tarrowtail=vee\n\t];\n"
+			RDot::Opts.output << "\n"
+			@@modules.each do |mod,info|
+				process_module(mod)
+			end
+			RDot::Opts.output << "}\n"
+		end
+
+		private :process_module, :graph_label, :node_label, :node_color
+		private :node_name, :module_places, :method_defs, :evaluated?, :module_modules
+		private :get_line_hash, :module_class_methods, :module_instance_methods
+	end
+end
+
+RDot::Opts.excludes.each do |lib|
+	require lib
+end
+
+class String
+
+	def escape
+		result = ""
+		self.each_byte do |c|
+			if c.chr == "<"
+				then result += "&lt;"
+			elsif c.chr == ">"
+				then result += "&gt;"
+			elsif c.chr == "&"
+				then result += "&amp;"
+			else
+				result += c.chr
+			end
+		end
+		result
+	end
+end
+
+class Symbol
+
+	def <=>(other)
+		self.to_s <=> other.to_s
+	end
+end
+
+class Module
+
+	def extended(obj)
+		if Module === obj
+			RDot.register :module => obj, :extension => self, :caller => caller
+		end
+	end
+
+	def included(mod)
+		RDot.register :module => mod, :inclusion => self, :caller => caller
+	end
+
+	def method_added(method)
+		if ! (method == :method_added || method == :singleton_method_added || method == :inherited || caller == [])
+			RDot.register :module => self, :method => method, :caller => caller
+		end
+	end
+
+	def singleton_method_added(method)
+		if ! (method == :method_added || method == :singleton_method_added || method == :inherited || caller == [])
+			RDot.register :module => self, :singleton_method => method, :caller => caller
+		end
+	end
+end
+
+class Class
+
+	def inherited(cls)
+		RDot.register :module => cls, :superclass => self, :caller => caller
+	end
+end
+
+ObjectSpace.each_object(Module) do |mod|
+	RDot.registed_preloaded mod
+end
+
+RDot::Opts.includes.each do |lib|
+	require lib
+end
+
+RDot.process
+
+
