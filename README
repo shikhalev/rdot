@@ -48,3 +48,6 @@ Usage: rdot [options] [LIBS]
         --color-extended=COLOR       Color for extension edges.
         --show-protected=[BOOL]      Show public and protected methods.
         --show-private=[BOOL]        Show public, protected and private methods.
+
+Samples:
+	see at http://github.com/shikhalev/rdot/downloads
