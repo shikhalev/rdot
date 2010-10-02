@@ -1,18 +1,17 @@
-RDot v0.9b - GraphViz class diagrams for Ruby
+RDot v0.9b — GraphViz class diagrams for Ruby
 
-Author: Ivan Shikhalev
-	mailto:shikhalev@gmail.com
-License: GNU General Public License
-	http://www.gnu.org/licenses/gpl.html
+Author: Ivan Shikhalev <shikhalev@gmail.com>
 
-Usage: rdot [options]
+License: GNU General Public License, see COPYING
+
+Usage: rdot [options] [LIBS]
     -h, -?, --help                   Show this help.
-    -I, --info=[INFO]                Show program's information - set:
-                                     	'about' - title with version;
-                                     	'author' - author's name with e-mail;
-                                     	'license' - license with URL;
-                                     	'usage' - command line options;
-                                     	'version' - program's version.
+    -I, --info=[INFO]                Show program's information — set:
+                                     	'about' — title with version;
+                                     	'author' — author's name with e-mail;
+                                     	'license' — license with URL;
+                                     	'usage' — command line options;
+                                     	'version' — program's version.
                                      or one of predefs:
                                      	'all' <=> 'about,author,license,usage';
                                      	'help' <=> 'about,usage';
