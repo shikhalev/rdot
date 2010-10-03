@@ -337,9 +337,12 @@ module RDot
 					if @@modules[mod][:instance][mth] == nil
 						@@modules[mod][:instance][mth] = []
 					end
-					if clr != nil
+#					if clr == nil
+#						clr = "(binary):0"
+#					end
+#					if clr != nil
 						@@modules[mod][:instance][mth] << clr
-					end
+#					end
 				end
 				mth = args[:singleton_method]
 				if mth != nil
@@ -349,9 +352,9 @@ module RDot
 					if @@modules[mod][:class][mth] == nil
 						@@modules[mod][:class][mth] = []
 					end
-					if clr != nil
+#					if clr != nil
 						@@modules[mod][:class][mth] << clr
-					end
+#					end
 				end
 			end
 		end
