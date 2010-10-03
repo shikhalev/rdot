@@ -30,6 +30,8 @@ module RDot
 		@@color_inherited = "steelblue"
 		@@color_included = "skyblue"
 		@@color_extended = "olivedrab"
+		@@color_protected = "#EEEEEE"
+		@@color_private = "#DDDDDD"
 		@@show_protected = false
 		@@show_private = false
 
@@ -93,6 +95,14 @@ module RDot
 
 			def color_extended
 				@@color_extended
+			end
+
+			def color_protected
+				@@color_protected
+			end
+
+			def color_private
+				@@color_private
 			end
 
 			def show_protected
@@ -252,6 +262,12 @@ module RDot
 		@@options.on("--color-extended","=COLOR",String,
 					"Color for extension edges.") do |value|
 			@@color_extended = value
+		end
+		@@options.on("--color-protected","=COLOR",String) do |value|
+			@@color_protected = value
+		end
+		@@options.on("--color-private","=COLOR",String) do |value|
+			@@color_private = value
 		end
 		@@options.on("--show-protected","=[BOOL]",TrueClass,
 					"Show public and protected methods.") do |value|
