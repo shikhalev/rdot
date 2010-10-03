@@ -376,7 +376,7 @@ module RDot
 		end
 
 		def node_name(mod)
-			mod.inspect.tr("#<>(): ","_")
+			mod.inspect.tr("#<>()=: ","_")
 		end
 
 		def evaluated?(mod)
@@ -445,8 +445,12 @@ module RDot
 				return {:file => "", :line => ""}
 			else
 				dl = d[0]
-				da = dl.split(":")
-				return {:file => da[0], :line => da[1]}
+				if dl != nil
+					da = dl.split(":")
+					return {:file => da[0], :line => da[1]}
+				else
+					return {:file => "(binary)", :line => nil}
+				end
 			end
 		end
 
@@ -668,13 +672,13 @@ class Module
 	end
 
 	def method_added(method)
-		if ! (method == :method_added || method == :singleton_method_added || method == :inherited || caller == [])
+		if ! (method == :method_added || method == :singleton_method_added || method == :inherited)
 			RDot.register :module => self, :method => method, :caller => caller
 		end
 	end
 
 	def singleton_method_added(method)
-		if ! (method == :method_added || method == :singleton_method_added || method == :inherited || caller == [])
+		if ! (method == :method_added || method == :singleton_method_added || method == :inherited)
 			RDot.register :module => self, :singleton_method => method, :caller => caller
 		end
 	end
