@@ -2,7 +2,7 @@
 
 require "optparse"
 
-RD_VERSION = "0.9.1b"
+RD_VERSION = "0.9.1"
 if $stdout.stat.chardev?
 	RD_TITLE = "\e[1mRDot v#{RD_VERSION}\e[0m - GraphViz class diagrams for Ruby"
 else
