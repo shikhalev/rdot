@@ -442,14 +442,14 @@ module RDot
 						return {:file => da[0], :line => da[1]}
 					end
 				end
-				return {:file => "", :line => ""}
+				return {:file => "(n/a)", :line => nil}
 			else
 				dl = d[0]
 				if dl != nil
 					da = dl.split(":")
 					return {:file => da[0], :line => da[1]}
 				else
-					return {:file => "(binary)", :line => nil}
+					return {:file => "(n/a)", :line => nil}
 				end
 			end
 		end
