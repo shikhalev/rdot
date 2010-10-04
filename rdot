@@ -30,8 +30,8 @@ module RDot
 		@@color_inherited = "steelblue"
 		@@color_included = "skyblue"
 		@@color_extended = "olivedrab"
-		@@color_protected = "#EEEEEE"
-		@@color_private = "#DDDDDD"
+		@@color_protected = "#DDDDDD"
+		@@color_private = "#BBBBBB"
 		@@show_protected = false
 		@@show_private = false
 
