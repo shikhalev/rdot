@@ -1,53 +1,69 @@
-RDot v0.9.1 — GraphViz class diagrams for Ruby
+RDot v1.9.2 — GraphViz class diagrams for Ruby
+	http://github.com/shikhalev/rdot/
 
 Author: Ivan Shikhalev <shikhalev@gmail.com>
-
+	http://github.com/shikhalev/
 License: GNU General Public License, see COPYING
+	http://www.gnu.org/licenses/gpl.html
 
-Usage: rdot [options] [LIBS]
-    -h, -?, --help                   Show this help.
-    -I, --info=[INFO]                Show program's information — set:
-                                     	'about' — title with version;
-                                     	'author' — author's name with e-mail;
-                                     	'license' — license with URL;
-                                     	'usage' — command line options;
-                                     	'version' — program's version.
-                                     or one of predefs:
-                                     	'all' <=> 'about,author,license,usage';
-                                     	'help' <=> 'about,usage';
-                                     	'info' (or nothing) <=> 'about,author,license'.
-        --about                      Show program's title.
-        --author                     Show program's author.
-    -L, --license                    Show program's license.
-        --usage                      Show command line options.
-    -V, --version                    Show program's version.
-    -x, -p, --exclude=LIBS           Exclude libraries from processing.
-        --preload
-    -i, -l, --include, --input=LIBS  Include libraries to processing.
-        --load
-    -o, --output=[FILE]              Send output to file instead of stdout.
-                                     'rdot.dot' if not specified.
-    -t, --title=TITLE                Set title of class diagram.
-        --color-module=COLOR         Specify color for highlight module nodes.
-                                     Color may by in #RRGGBB form or one of listed at
-                                     	http://graphviz.org/doc/info/colors.html.
-        --color-module-preloaded=COLOR
-                                     Color for highlight preloaded modules.
-        --color-class=COLOR          Color for class nodes.
-        --color-class-evaluated=COLOR
-                                     Color for evaluated classes.
+Usage: rdot [options]
+    -h, --help                       Show short help and exit.
+    -I, --info=[INFO]                Show some program information and exit.
+                                     Argument may by comma-separated set of:
+                                         'about' — title with version
+                                                    and homepage,
+                                         'author' — author name with e-mail,
+                                         'license' — license info,
+                                         'usage' — command line arguments,
+                                         'version' — current version;
+                                     or one of predefined sets:
+                                         'all' = 'about,author,license,usage',
+                                         'help' = 'about,usage',
+                                         'info' (or no argument) =
+                                                       'about,author,license'.
+        --about                      Show program title with version and exit.
+        --author                     Show author information and exit.
+    -L, --license                    Show license information and exit.
+    -?, --usage                      Show command line arguments and exit.
+    -V, --version                    Show version and exit.
+    -x, -p, --exclude=LIBS           Comma-separated list of libraries
+        --preload                    which must be excluded from output graph.
+                                     This libs will be preloaded before start
+                                     registering any changes like standard
+                                     objects.
+    -i, --include, --input=LIBS      Comma-separated list of libraries for
+                                     processing. Also libs may be specified
+                                     in command line without any key.
+    -o, --output=[FILE]              Send output to file instead stdout.
+                                     'rdot.dot' if no argument specified.
+    -t, --title=TITLE                Set graph title.
+        --color-class=COLOR          Set class-node color. See:
+                                     http://graphviz.org/doc/info/colors.html
         --color-class-preloaded=COLOR
-                                     Color for preloaded classes.
-        --color-exception=COLOR      Color for exception classes.
-        --color-exception-evaluated=COLOR
-                                     Color for evaluated exception classes.
+                                     Set node color for preloaded classes.
+        --color-class-evaluated=COLOR
+                                     Set node color for evaluated classes.
+        --color-exception=COLOR      Set node color for exception classes.
         --color-exception-preloaded=COLOR
-                                     Color for preloaded exception classes.
-        --color-inherited=COLOR      Color for inheritance edges.
-        --color-included=COLOR       Color for inclusion edges.
-        --color-extended=COLOR       Color for extension edges.
-        --show-protected=[BOOL]      Show public and protected methods.
-        --show-private=[BOOL]        Show public, protected and private methods.
+                                     Set node color for preloaded exceptions.
+        --color-exception-evaluated=COLOR
+                                     Set node color for evaluated exceptions.
+        --color-module=COLOR         Set node color for modules.
+        --color-module-preloaded=COLOR
+                                     Set node color for preloaded modules.
+        --color-inherited=COLOR      Set inheritance-edge color.
+        --color-included=COLOR       Set include-edge color.
+        --color-extended=COLOR       Set extension-edge color.
+        --color-protected=COLOR      Set color marker for protected methods.
+        --color-private=COLOR        Set color marker for private methods.
+    -s, --show-protected             Show public and protected methods.
+    -S, --show-private               Show public, protected and private methods.
+    -z, --show-preloaded             Show methods etc. for preloaded classes.
+                                     Use this to see the structure of standard
+                                     Ruby classes.
+    -M, --hide-methods               Hide all methods from diagram.
+    -C, --hide-constants             Hide all constants.
+    -E, --skip-exceptions            Skip exception classes from processing.
 
 Samples:
 	see at http://github.com/shikhalev/rdot/downloads
