@@ -24,18 +24,27 @@ module RDot
 		end
 
 		def register_const(mod,const,preloaded)
-			value = mod.const_get(const)
-			mod.ancestors.each do |anc|
-				if anc != mod && anc.const_defined?(const)
-					if anc.const_get(const) == value
-						return nil
+			if mod.const_defined? const
+				value = mod.const_get(const)
+				mod.ancestors.each do |anc|
+					if anc != mod && anc.const_defined?(const)
+						if anc.const_get(const) == value
+							return nil
+						end
 					end
 				end
+				if @modules[mod][:constants] == nil
+					@modules[mod][:constants] = {}
+				end
+				if @modules[mod][:constants][const] == nil
+					@modules[mod][:constants][const] = {}
+				end
+				oldvalue = @modules[mod][:constants][const][:value]
+				if oldvalue != value
+					@modules[mod][:constants][const][:value] = value
+					@modules[mod][:constants][const][:preloaded] = preloaded
+				end
 			end
-			if @modules[mod][:constants] == nil
-				@modules[mod][:constants] = {}
-			end
-			@modules[mod][:constants][const] = value
 		end
 
 		def register_module(mod,preloaded)
@@ -354,6 +363,8 @@ module RDot
 		end
 	end
 end
+
+RDot.scan_modules(! RDot::Options.includes.include?("optparse"))
 
 require "pp"
 
