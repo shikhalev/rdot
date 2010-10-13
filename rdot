@@ -82,7 +82,7 @@ require "optparse"
 
 module RDot
 
-	VERSION = "1.9.2"
+	VERSION = "0.9.2"
 	if $stdout.stat.chardev?
 		TITLE = "\e[1mRDot v#{RDot::VERSION}\e[0m - GraphViz class diagrams" +
 				" for Ruby\n\thttp://github.com/shikhalev/rdot/"
@@ -328,7 +328,7 @@ module RDot
 				"Hide all constants.") do
 			@hide_constants = true
 		end
-		opts.on("-X","--except","=[LIST]",Array,
+		opts.on("-e","--except","=[LIST]",Array,
 				"Except classes (with children) from",
 		        "processing. If no classes specified,",
 		        "the Exception will excepted.") do |arg|
