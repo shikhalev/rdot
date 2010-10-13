@@ -18,9 +18,35 @@ module RDot
 			end
 		end
 
+		attr_reader :sources
+
+		def register_source(mod,scope,symbol,source)
+			if Array === source && source.size != 0
+				if @sources == nil
+					@sources = {}
+				end
+				if @sources[mod] == nil
+					@sources[mod] = {}
+				end
+				if @sources[mod][scope] == nil
+					@sources[mod][scope] = {}
+				end
+				@sources[mod][scope][symbol] = source[0]
+			end
+		end
+
+		def get_source(mod,scope,symbol)
+			if @sources == nil || @sources[mod] == nil || @sources[mod][scope] == nil
+				nil
+			else
+				@sources[mod][scope][symbol]
+			end
+		end
+
 		attr_reader :modules
 
 		def register_method(mod,scope,access,symbol,preloaded)
+
 		end
 
 		def register_const(mod,const,preloaded)
@@ -86,6 +112,15 @@ module RDot
 end
 
 RDot.scan_modules(true)
+
+class Module
+	def method_added(method)
+		RDot.register_source self, :instance, method, caller
+	end
+	def singleton_method_added(method)
+		RDot.register_source self, :class, method, caller
+	end
+end
 
 require "optparse"
 
@@ -366,7 +401,17 @@ end
 
 RDot.scan_modules(! RDot::Options.includes.include?("optparse"))
 
+RDot::Options.excludes.each do |lib|
+	require lib
+end
+
+RDot.scan_modules(true)
+
+RDot::Options.includes.each do |lib|
+	require lib
+end
+
 require "pp"
 
-pp RDot::modules
+pp RDot::sources
 
