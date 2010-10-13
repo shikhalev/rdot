@@ -46,7 +46,14 @@ module RDot
 		attr_reader :modules
 
 		def register_method(mod,scope,access,symbol,preloaded)
+			if scope == :class
+				object = mod.method(symbol).unbind
+			else
+				object = mod.instance_method(symbol)
+			end
+			if owner_class(object) == mod
 
+			end
 		end
 
 		def register_const(mod,const,preloaded)
