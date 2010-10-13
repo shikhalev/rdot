@@ -36,14 +36,63 @@ module RDot
 		end
 
 		def get_source(mod,scope,symbol)
-			if @sources == nil || @sources[mod] == nil || @sources[mod][scope] == nil
+			if @sources == nil || @sources[mod] == nil ||
+					@sources[mod][scope] == nil
 				nil
 			else
 				@sources[mod][scope][symbol]
 			end
 		end
 
+		def source_hash(source)
+			if String === source && source.length != 0
+				a = source.split(":")
+				{:file => a[0], :line => a[1].to_i}
+			else
+				{:file => "(n/a)", :line => nil}
+			end
+		end
+
 		attr_reader :modules
+
+		def attribute?(mod,scope,symbol,source)
+			if /in `attr/ === source || /\w=$/ === symbol.to_s
+				true
+			else
+				if @modules[mod][scope] == nil ||
+						@modules[mod][scope][:attributes] == nil
+					false
+				else
+					@modules[mod][scope][:attributes].has_key? symbol
+				end
+			end
+		end
+
+		def register_attribute(mod,scope,symbol,source,preloaded)
+			if @modules[mod][scope] == nil
+				@modules[mod][scope] = {}
+			end
+			if @modules[mod][scope][:attributes] == nil
+				@modules[mod][scope][:attributes] = {}
+			end
+			if /=$/ === symbol.to_s
+				symbol = symbol.to_s[0..symbol.to_s.length-2].intern
+				access = {:write => true}
+			else
+				access = {:read => true}
+			end
+			if @modules[mod][scope][:attributes][symbol] == nil
+				@modules[mod][scope][:attributes][symbol] = source_hash(source)
+			end
+			if @modules[mod][scope][:attributes][symbol][:line] == nil
+				@modules[mod][scope][:attributes][symbol].merge! source_hash(source)
+			end
+			@modules[mod][scope][:attributes][symbol].merge! access
+			if /eval/ === source
+				@modules[mod][scope][:attributes][symbol][:evaluated] = true
+			end
+			@modules[mod][scope][:attributes][symbol][:preloaded] = preloaded
+		end
 
 		def register_method(mod,scope,access,symbol,preloaded)
 			if scope == :class
@@ -52,7 +101,25 @@ module RDot
 				object = mod.instance_method(symbol)
 			end
 			if owner_class(object) == mod
-
+				source = get_source(mod,scope,symbol)
+				if attribute? mod, scope, symbol, source
+					register_attribute mod, scope, symbol, source, preloaded
+				else
+					if @modules[mod][scope] == nil
+						@modules[mod][scope] = {}
+					end
+					if @modules[mod][scope][access] == nil
+						@modules[mod][scope][access] = {}
+					end
+					if @modules[mod][scope][access][symbol] == nil
+						@modules[mod][scope][access][symbol] = {}
+					end
+					@modules[mod][scope][access][symbol].merge! source_hash(source)
+					if /eval/ === source
+						@modules[mod][scope][access][symbol][:evaluated] = true
+					end
+					@modules[mod][scope][access][symbol][:preloaded] = preloaded
+				end
 			end
 		end
 
@@ -420,5 +487,5 @@ end
 
 require "pp"
 
-pp RDot::sources
+pp RDot::modules
 
