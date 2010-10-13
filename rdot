@@ -76,7 +76,8 @@ module RDot
 			if source[:line] == nil
 				"#{object.name}(#{auto_header(object.arity)})"
 			else
-				regexp = Regexp.new "#{Regexp.escape(object.name)}\\((\\w|,|$|\\s|\\*|\\&)*\\)"
+				regexp = Regexp.new "#{Regexp.escape(object.name)}" +
+						"\\((\\w|,|$|\\s|\\*|\\&)*\\)"
 				if @files == nil
 					@files = {}
 				end
@@ -160,7 +161,8 @@ module RDot
 				@modules[mod][scope][:attributes][symbol][:evaluated] = true
 			end
 			if @modules[mod][scope][:attributes][symbol][accessor] != object
-				@modules[mod][scope][:attributes][symbol][:preloaded] = preloaded
+				@modules[mod][scope][:attributes][symbol][:preloaded] =
+						preloaded
 			end
 			@modules[mod][scope][:attributes][symbol][accessor] = object
 		end
@@ -174,7 +176,8 @@ module RDot
 			if owner_class(object) == mod
 				source = get_source(mod,scope,symbol)
 				if attribute? mod, scope, symbol, source
-					register_attribute mod, scope, symbol, source, preloaded, object
+					register_attribute mod, scope, symbol, source, preloaded,
+							object
 				else
 					if @modules[mod][scope] == nil
 						@modules[mod][scope] = {}
@@ -191,7 +194,8 @@ module RDot
 						@modules[mod][scope][access][symbol][:evaluated] = true
 					end
 					if @modules[mod][scope][access][symbol][:object] != object
-						@modules[mod][scope][access][symbol][:preloaded] = preloaded
+						@modules[mod][scope][access][symbol][:preloaded] =
+								preloaded
 					end
 					@modules[mod][scope][access][symbol][:header] =
 							method_header(object,hash)
@@ -236,19 +240,23 @@ module RDot
 				register_method mod, :class, :public, method.intern, preloaded
 			end
 			mod.protected_methods(false).each do |method|
-				register_method mod, :class, :protected, method.intern, preloaded
+				register_method mod, :class, :protected, method.intern,
+						preloaded
 			end
 			mod.private_methods(false).each do |method|
 				register_method mod, :class, :private, method.intern, preloaded
 			end
 			mod.public_instance_methods(false).each do |method|
-				register_method mod, :instance, :public, method.intern, preloaded
+				register_method mod, :instance, :public, method.intern,
+						preloaded
 			end
 			mod.protected_instance_methods(false).each do |method|
-				register_method mod, :instance, :protected, method.intern, preloaded
+				register_method mod, :instance, :protected, method.intern,
+						preloaded
 			end
 			mod.private_instance_methods(false).each do |method|
-				register_method mod, :instance, :private, method.intern, preloaded
+				register_method mod, :instance, :private, method.intern,
+						preloaded
 			end
 			mod.constants.each do |const|
 				register_const mod, const.intern, preloaded
@@ -263,9 +271,11 @@ module RDot
 				@modules[mod] = {}
 			end
 			if @modules[mod][:extensions] == nil
-				@modules[mod][:extensions] = {}
+				@modules[mod][:extensions] = []
 			end
-			@modules[mod][:extensions][ext] = true
+			if ! @modules[mod][:extensions].include?(ext)
+				@modules[mod][:extensions] << ext
+			end
 		end
 
 		def scan_modules(preloaded)
@@ -313,18 +323,49 @@ module RDot
 			@processed.include? mod
 		end
 
+		def module_modules(mod)
+			ancs = mod.ancestors
+			ancs -= [mod]
+			if Class === mod
+				if mod.superclass != nil
+					ancs -= mod.superclass.ancestors
+				end
+			end
+			result = ancs.clone
+			ancs.each do |anc|
+				result -= (anc.ancestors - [anc])
+			end
+			result
+		end
+
+		def node_name(mod)
+			mod.name.tr("#<>() =,;:","_")
+		end
+
+		def node_label(mod)
+			"\"#{mod.name}\""
+		end
+
 		def out_module(mod)
 			if ! processed?(mod)
 				@processed << mod
+				RDot::Options.output << "\t#{node_name(mod)}" +
+						"[label=#{node_label(mod)}];\n"
 				if Class === mod
 					if mod.superclass != nil
 						out_module mod.superclass
+						RDot::Options.output << "\t\t" +
+								"#{node_name(mod.superclass)} -> " +
+								"#{node_name(mod)}[color=\"" +
+								"#{RDot::Options.color_inherited}\"];\n"
 					end
 				end
 			end
 		end
 
 		def out_modules
+			RDot::Options.output << "digraph gRDot{\n"
+			RDot::Options.output << "\n"
 			ObjectSpace.each_object Module do |mod|
 				if ! RDot::Options.except?(mod)
 					if RDot::Options.show_preloaded || ! module_preloaded?(mod)
@@ -332,6 +373,7 @@ module RDot
 					end
 				end
 			end
+			RDot::Options.output << "}\n"
 		end
 	end
 end
