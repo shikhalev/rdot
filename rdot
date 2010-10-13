@@ -46,10 +46,51 @@ module RDot
 
 		def source_hash(source)
 			if String === source && source.length != 0
-				a = source.split(":")
-				{:file => a[0], :line => a[1].to_i}
+				if /(eval)/ === source
+					{:file => "(eval)", :line => nil}
+				else
+					a = source.split(":")
+					{:file => a[0], :line => a[1].to_i}
+				end
 			else
 				{:file => "(n/a)", :line => nil}
+			end
+		end
+
+		def auto_header(arity)
+			if arity == 0
+				""
+			else
+				args = []
+				(0..arity.abs-1).each do |iarg|
+					args << ("a"[0]+iarg).chr
+				end
+				if arity < 0
+					args[arity.abs-1] = "*#{args[arity.abs-1]}"
+				end
+				args.join(",")
+			end
+		end
+
+		def method_header(object,source)
+			if source[:line] == nil
+				"#{object.name}(#{auto_header(object.arity)})"
+			else
+				regexp = Regexp.new "#{Regexp.escape(object.name)}\\((\\w|,|$|\\s|\\*|\\&)*\\)"
+				if @files == nil
+					@files = {}
+				end
+				if @files[source[:file]] == nil
+					@files[source[:file]] = IO.readlines(source[:file])
+				end
+				file = @files[source[:file]]
+				text = file[(source[:line]-1)..(file.size-1)].join("")
+				header = text[regexp]
+				if header == nil
+					"#{object.name}()"
+				else
+					header.delete(" \t\n")
+				end
 			end
 		end
 
@@ -68,7 +109,7 @@ module RDot
 			end
 		end
 
-		def register_attribute(mod,scope,symbol,source,preloaded)
+		def register_attribute(mod,scope,symbol,source,preloaded,object)
 			if @modules[mod][scope] == nil
 				@modules[mod][scope] = {}
 			end
@@ -78,20 +119,50 @@ module RDot
 			if /=$/ === symbol.to_s
 				symbol = symbol.to_s[0..symbol.to_s.length-2].intern
 				access = {:write => true}
+				accessor = :writer
+				if @modules[mod][scope][:public] != nil &&
+						@modules[mod][scope][:public][symbol] != nil
+					register_attribute mod, scope, symbol,
+							@modules[mod][scope][:public][symbol][:source],
+							@modules[mod][scope][:public][symbol][:preloaded],
+							@modules[mod][scope][:public][symbol][:object]
+					@modules[mod][scope][:public].delete symbol
+				end
+				if @modules[mod][scope][:protected] != nil &&
+						@modules[mod][scope][:protected][symbol] != nil
+					register_attribute mod, scope, symbol,
+							@modules[mod][scope][:protected][symbol][:source],
+							@modules[mod][scope][:protected][symbol][:preloaded],
+							@modules[mod][scope][:protected][symbol][:object]
+					@modules[mod][scope][:protected].delete symbol
+				end
+				if @modules[mod][scope][:private] != nil &&
+						@modules[mod][scope][:private][symbol] != nil
+					register_attribute mod, scope, symbol,
+							@modules[mod][scope][:private][symbol][:source],
+							@modules[mod][scope][:private][symbol][:preloaded],
+							@modules[mod][scope][:private][symbol][:object]
+					@modules[mod][scope][:private].delete symbol
+				end
 			else
 				access = {:read => true}
+				accessor = :reader
 			end
+			hash = source_hash(source)
 			if @modules[mod][scope][:attributes][symbol] == nil
-				@modules[mod][scope][:attributes][symbol] = source_hash(source)
+				@modules[mod][scope][:attributes][symbol] = hash
 			end
 			if @modules[mod][scope][:attributes][symbol][:line] == nil
-				@modules[mod][scope][:attributes][symbol].merge! source_hash(source)
+				@modules[mod][scope][:attributes][symbol].merge! hash
 			end
 			@modules[mod][scope][:attributes][symbol].merge! access
 			if /eval/ === source
 				@modules[mod][scope][:attributes][symbol][:evaluated] = true
 			end
-			@modules[mod][scope][:attributes][symbol][:preloaded] = preloaded
+			if @modules[mod][scope][:attributes][symbol][accessor] != object
+				@modules[mod][scope][:attributes][symbol][:preloaded] = preloaded
+			end
+			@modules[mod][scope][:attributes][symbol][accessor] = object
 		end
 
 		def register_method(mod,scope,access,symbol,preloaded)
@@ -103,7 +174,7 @@ module RDot
 			if owner_class(object) == mod
 				source = get_source(mod,scope,symbol)
 				if attribute? mod, scope, symbol, source
-					register_attribute mod, scope, symbol, source, preloaded
+					register_attribute mod, scope, symbol, source, preloaded, object
 				else
 					if @modules[mod][scope] == nil
 						@modules[mod][scope] = {}
@@ -114,11 +185,18 @@ module RDot
 					if @modules[mod][scope][access][symbol] == nil
 						@modules[mod][scope][access][symbol] = {}
 					end
-					@modules[mod][scope][access][symbol].merge! source_hash(source)
+					hash = source_hash(source)
+					@modules[mod][scope][access][symbol].merge! hash
 					if /eval/ === source
 						@modules[mod][scope][access][symbol][:evaluated] = true
 					end
-					@modules[mod][scope][access][symbol][:preloaded] = preloaded
+					if @modules[mod][scope][access][symbol][:object] != object
+						@modules[mod][scope][access][symbol][:preloaded] = preloaded
+					end
+					@modules[mod][scope][access][symbol][:header] =
+							method_header(object,hash)
+					@modules[mod][scope][access][symbol][:source] = source
+					@modules[mod][scope][access][symbol][:object] = object
 				end
 			end
 		end
@@ -177,9 +255,82 @@ module RDot
 			end
 		end
 
+		def register_extend(mod,ext)
+			if @modules == nil
+				@modules = {}
+			end
+			if @modules[mod] == nil
+				@modules[mod] = {}
+			end
+			if @modules[mod][:extensions] == nil
+				@modules[mod][:extensions] = {}
+			end
+			@modules[mod][:extensions][ext] = true
+		end
+
 		def scan_modules(preloaded)
 			ObjectSpace.each_object Module do |mod|
 				register_module mod, preloaded
+			end
+		end
+
+		def module_preloaded?(mod)
+			[:class, :instance].each do |scope|
+				accesses = [:attribute, :public]
+				if RDot::Options.show_protected
+					accesses << :protected
+				end
+				if RDot::Options.show_private
+					accesses << :private
+				end
+				accesses.each do |access|
+					if @modules != nil && @modules[mod] != nil &&
+							@modules[mod][scope] != nil &&
+							@modules[mod][scope][access] != nil
+						@modules[mod][scope][access].each do |key,value|
+							if value[:preloaded] == false
+								return false
+							end
+						end
+					end
+				end
+			end
+			if @modules != nil && @modules[mod] != nil &&
+					@modules[mod][:constants] != nil
+				@modules[mod][:constants].each do |key,value|
+					if value[:preloaded] == false
+						return false
+					end
+				end
+			end
+			return true
+		end
+
+		def processed?(mod)
+			if @processed == nil
+				@processed = []
+			end
+			@processed.include? mod
+		end
+
+		def out_module(mod)
+			if ! processed?(mod)
+				@processed << mod
+				if Class === mod
+					if mod.superclass != nil
+						out_module mod.superclass
+					end
+				end
+			end
+		end
+
+		def out_modules
+			ObjectSpace.each_object Module do |mod|
+				if ! RDot::Options.except?(mod)
+					if RDot::Options.show_preloaded || ! module_preloaded?(mod)
+						out_module mod
+					end
+				end
 			end
 		end
 	end
@@ -193,6 +344,11 @@ class Module
 	end
 	def singleton_method_added(method)
 		RDot.register_source self, :class, method, caller
+	end
+	def extended(obj)
+		if Module === obj
+			RDot.register_extend obj, self
+		end
 	end
 end
 
@@ -430,6 +586,7 @@ module RDot
 		end
 		opts.on("-S","--show-private",TrueClass,
 				"Show public, protected and private methods.") do
+			@show_protected = true
 			@show_private = true
 		end
 		opts.on("-z","--show-preloaded",TrueClass,
@@ -473,7 +630,9 @@ module RDot
 	end
 end
 
-RDot.scan_modules(! RDot::Options.includes.include?("optparse"))
+if RDot::Options.includes.include?("optparse")
+	RDot.scan_modules(false)
+end
 
 RDot::Options.excludes.each do |lib|
 	require lib
@@ -485,7 +644,11 @@ RDot::Options.includes.each do |lib|
 	require lib
 end
 
+RDot.scan_modules(false)
+
 require "pp"
 
-pp RDot::modules
+RDot.out_modules
+
+#p RDot::modules
 
