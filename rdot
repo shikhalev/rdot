@@ -339,11 +339,11 @@ module RDot
 		end
 
 		def node_name(mod)
-			mod.name.tr("#<>() =,;:","_")
+			"node_#{mod.name.tr("#<>() =,;:","_")}"
 		end
 
 		def node_label(mod)
-			"\"#{mod.name}\""
+			"<<TABLE CELLBORDER=\"0\" CELLSPACING=\"0\"><TR><TD ALIGN=\"RIGHT\">#{mod.class.name.downcase}</TD><TD COLSPAN=\"3\" ALIGN=\"LEFT\">#{mod.inspect}</TD></TR></TABLE>>"
 		end
 
 		def out_module(mod)
@@ -363,8 +363,23 @@ module RDot
 			end
 		end
 
+		def graph_label
+			if RDot::Options.title == nil
+				"\"RDot: #{RDot::Options.includes.join(", ")}\""
+			else
+				"\"#{RDot::Options.title}\""
+			end
+		end
+
 		def out_modules
-			RDot::Options.output << "digraph gRDot{\n"
+			RDot::Options.output << "digraph graph_RDot{\n"
+			RDot::Options.output << "\tgraph[rankdir=LR,\n\t\tsplines=true,\n"+
+					"\t\tfontname=\"Droid Sans\",\n"+
+					"\t\tfontsize=24,\n\t\tlabelloc=t,\n"+
+					"\t\tlabel=#{graph_label}\n\t];\n"
+			RDot::Options.output << "\tnode[shape=plaintext,\n"+
+					"\t\tfontname=\"Droid Sans Mono\",\n\t\tfontsize=9\n\t];\n"
+			RDot::Options.output << "\tedge[dir=back,\n\t\tarrowtail=vee\n\t];\n"
 			RDot::Options.output << "\n"
 			ObjectSpace.each_object Module do |mod|
 				if ! RDot::Options.except?(mod)
