@@ -453,7 +453,6 @@ module RDot
 		end
 
 		def attr_header(value)
-			$stderr << "#{value.inspect}\n"
 			result = "#{value[0].to_s.escape} ["
 			result += "r" if value[1][:read]
 			result += "w" if value[1][:write]
