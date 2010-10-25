@@ -76,7 +76,7 @@ module RDot
 					{:file => "(forward)", :line => nil}
 				else
 					a = source.split(":")
-					{:file => a[0], :line => a[1].to_i}
+					{:file => a[0].strip, :line => a[1].to_i}
 				end
 			else
 				{:file => "(n/a)", :line => nil}
@@ -103,7 +103,7 @@ module RDot
 				"#{object.name}(#{auto_header(object.arity)})"
 			else
 				regexp = Regexp.new "#{Regexp.escape(object.name)}" +
-						"\\((\\w|,|$|\\s|\\*|\\&)*\\)"
+						"\\s*\\((\\w|,|$|\\s|\\*|\\&)*\\)"
 				if @files == nil
 					@files = {}
 				end
@@ -232,7 +232,7 @@ module RDot
 		end
 
 		def register_const(mod,const,preloaded)
-			if mod.const_defined?(const) #&& ! mod.autoload?(const)
+			if mod.const_defined?(const)
 				begin
 					value = mod.const_get(const)
 					mod.ancestors.each do |anc|
@@ -256,8 +256,6 @@ module RDot
 				rescue LoadError
 
 				end
-#			else
-#				$stderr << "#{const} => #{mod.autoload?(const)}\n"
 			end
 		end
 
@@ -464,6 +462,23 @@ module RDot
 			result = ""
 			if @modules[mod] != nil
 				tds0 = []
+				tds = []
+				if @modules[mod][:constants] != nil
+					$stderr << "#{@modules[mod][:constants].inspect}\n"
+					@modules[mod][:constants].sort.each do |value|
+						if RDot::Options.show_preloaded ||
+								! value[1][:preloaded]
+							if ! value[1][:preloaded]
+								tds << "<TD ALIGN=\"LEFT\" COLSPAN=\"3\">#{value[0]} &lt;#{value[1][:value].class.inspect.escape}&gt;</TD>"
+							else
+								tds << "<TD ALIGN=\"LEFT\" COLSPAN=\"3\"><FONT COLOR=\"#666666\">#{value[0]} &lt;#{value[1][:value]}&gt;</FONT></TD>"
+							end
+						end
+					end
+				end
+				if tds.size != 0
+					tds0 << "<TD ROWSPAN=\"#{tds.size}\" VALIGN=\"TOP\" ALIGN=\"RIGHT\">const</TD>"+tds.join("</TR><TR>")
+				end
 				[:class, :instance].each do |scope|
 					tds = []
 					if @modules[mod][scope] != nil
@@ -472,13 +487,13 @@ module RDot
 								if RDot::Options.show_preloaded ||
 										! value[1][:preloaded]
 									if ! value[1][:preloaded]
-										tds << "<TD>#{attr_header(value)}</TD>"+
-												"<TD>#{value[1][:file]}</TD>"+
-												"<TD>#{value[1][:line]}</TD>"
+										tds << "<TD ALIGN=\"LEFT\">#{attr_header(value)}</TD>"+
+												"<TD ALIGN=\"LEFT\">#{value[1][:file]}</TD>"+
+												"<TD ALIGN=\"RIGHT\">#{value[1][:line]}</TD>"
 									else
-										tds << "<TD><FONT COLOR=\"#666666\">#{attr_header(value)}</FONT></TD>"+
-												"<TD><FONT COLOR=\"#666666\">#{value[1][:file]}</FONT></TD>"+
-												"<TD><FONT COLOR=\"#666666\">#{nn(value[1][:line])}</FONT></TD>"
+										tds << "<TD> ALIGN=\"LEFT\"<FONT COLOR=\"#666666\">#{attr_header(value)}</FONT></TD>"+
+												"<TD ALIGN=\"LEFT\"><FONT COLOR=\"#666666\">#{value[1][:file]}</FONT></TD>"+
+												"<TD ALIGN=\"RIGHT\"><FONT COLOR=\"#666666\">#{nn(value[1][:line])}</FONT></TD>"
 									end
 								end
 							end
@@ -492,13 +507,13 @@ module RDot
 									if RDot::Options.show_preloaded ||
 											! value[1][:preloaded]
 										if ! value[1][:preloaded]
-											tds << "<TD BGCOLOR=\"#{access_color(access)}\">#{value[1][:header].escape}</TD>"+
-													"<TD BGCOLOR=\"#{access_color(access)}\">#{value[1][:file]}</TD>"+
-													"<TD BGCOLOR=\"#{access_color(access)}\">#{value[1][:line]}</TD>"
+											tds << "<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\">#{value[1][:header].escape}</TD>"+
+													"<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\">#{value[1][:file]}</TD>"+
+													"<TD ALIGN=\"RIGHT\" BGCOLOR=\"#{access_color(access)}\">#{value[1][:line]}</TD>"
 										else
-											tds << "<TD BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{value[1][:header].escape}</FONT></TD>"+
-													"<TD BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{value[1][:file]}</FONT></TD>"+
-													"<TD BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{nn(value[1][:line])}</FONT></TD>"
+											tds << "<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{value[1][:header].escape}</FONT></TD>"+
+													"<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{value[1][:file]}</FONT></TD>"+
+													"<TD ALIGN=\"RIGHT\" BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{nn(value[1][:line])}</FONT></TD>"
 										end
 									end
 								end
@@ -597,24 +612,6 @@ module RDot
 	end
 end
 
-RDot.scan_modules(true)
-
-class Module
-	def method_added(method)
-		RDot.register_source self, :instance, method, caller
-	end
-	def singleton_method_added(method)
-		RDot.register_source self, :class, method, caller
-	end
-	def extended(obj)
-		if Module === obj
-			RDot.register_extend obj, self
-		end
-	end
-end
-
-require "optparse"
-
 module RDot
 
 	VERSION = "0.9.2"
@@ -647,8 +644,8 @@ module RDot
 		@color_inherited = "steelblue"
 		@color_included = "skyblue"
 		@color_extended = "olivedrab"
-		@color_protected = "#DDDDDD"
-		@color_private = "#BBBBBB"
+		@color_protected = "#EEEEEE"
+		@color_private = "#DDDDDD"
 		@show_protected = false
 		@show_private = false
 		@show_preloaded = false
@@ -674,6 +671,31 @@ module RDot
 				return false
 			end
 		end
+	end
+end
+
+class Module
+	def method_added(method)
+		RDot.register_source self, :instance, method, caller
+	end
+	def singleton_method_added(method)
+		RDot.register_source self, :class, method, caller
+	end
+	def extended(obj)
+		if Module === obj
+			RDot.register_extend obj, self
+		end
+	end
+end
+
+RDot.scan_modules(true)
+
+require "optparse"
+
+module RDot
+
+	module Options
+
 		opts = OptionParser.new
 		opts.on("-h","--help",
 				"Show short help and exit.") do
@@ -907,9 +929,6 @@ end
 
 RDot.scan_modules(false)
 
-require "pp"
-
 RDot.out_modules
 
-#p RDot::modules
 
