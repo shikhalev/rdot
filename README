@@ -6,7 +6,7 @@ Author: Ivan Shikhalev <shikhalev@gmail.com>
 License: GNU General Public License, see COPYING
 	http://www.gnu.org/licenses/gpl.html
 
-Usage: rdot [options] [LIBS]
+Usage: rdot [options]
     -h, --help                       Show short help and exit.
     -I, --info=[INFO]                Show some program information and exit.
                                      Argument may by comma-separated set of:

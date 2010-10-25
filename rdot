@@ -462,66 +462,69 @@ module RDot
 			result = ""
 			if @modules[mod] != nil
 				tds0 = []
-				tds = []
-				if @modules[mod][:constants] != nil
-					$stderr << "#{@modules[mod][:constants].inspect}\n"
-					@modules[mod][:constants].sort.each do |value|
-						if RDot::Options.show_preloaded ||
-								! value[1][:preloaded]
-							if ! value[1][:preloaded]
-								tds << "<TD ALIGN=\"LEFT\" COLSPAN=\"3\">#{value[0]} &lt;#{value[1][:value].class.inspect.escape}&gt;</TD>"
-							else
-								tds << "<TD ALIGN=\"LEFT\" COLSPAN=\"3\"><FONT COLOR=\"#666666\">#{value[0]} &lt;#{value[1][:value]}&gt;</FONT></TD>"
-							end
-						end
-					end
-				end
-				if tds.size != 0
-					tds0 << "<TD ROWSPAN=\"#{tds.size}\" VALIGN=\"TOP\" ALIGN=\"RIGHT\">const</TD>"+tds.join("</TR><TR>")
-				end
-				[:class, :instance].each do |scope|
+				if ! RDot::Options.hide_constants
 					tds = []
-					if @modules[mod][scope] != nil
-						if @modules[mod][scope][:attributes] != nil
-							@modules[mod][scope][:attributes].sort.each do |value|
-								if RDot::Options.show_preloaded ||
-										! value[1][:preloaded]
-									if ! value[1][:preloaded]
-										tds << "<TD ALIGN=\"LEFT\">#{attr_header(value)}</TD>"+
-												"<TD ALIGN=\"LEFT\">#{value[1][:file]}</TD>"+
-												"<TD ALIGN=\"RIGHT\">#{value[1][:line]}</TD>"
-									else
-										tds << "<TD> ALIGN=\"LEFT\"<FONT COLOR=\"#666666\">#{attr_header(value)}</FONT></TD>"+
-												"<TD ALIGN=\"LEFT\"><FONT COLOR=\"#666666\">#{value[1][:file]}</FONT></TD>"+
-												"<TD ALIGN=\"RIGHT\"><FONT COLOR=\"#666666\">#{nn(value[1][:line])}</FONT></TD>"
-									end
-								end
-							end
-						end
-						accesses = [:public]
-						accesses << :protected if RDot::Options.show_protected
-						accesses << :private if RDot::Options.show_private
-						accesses.each do |access|
-							if @modules[mod][scope][access] != nil
-								@modules[mod][scope][access].sort.each do |value|
-									if RDot::Options.show_preloaded ||
-											! value[1][:preloaded]
-										if ! value[1][:preloaded]
-											tds << "<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\">#{value[1][:header].escape}</TD>"+
-													"<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\">#{value[1][:file]}</TD>"+
-													"<TD ALIGN=\"RIGHT\" BGCOLOR=\"#{access_color(access)}\">#{value[1][:line]}</TD>"
-										else
-											tds << "<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{value[1][:header].escape}</FONT></TD>"+
-													"<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{value[1][:file]}</FONT></TD>"+
-													"<TD ALIGN=\"RIGHT\" BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{nn(value[1][:line])}</FONT></TD>"
-										end
-									end
+					if @modules[mod][:constants] != nil
+						@modules[mod][:constants].sort.each do |value|
+							if RDot::Options.show_preloaded ||
+									! value[1][:preloaded]
+								if ! value[1][:preloaded]
+									tds << "<TD ALIGN=\"LEFT\" COLSPAN=\"3\">#{value[0]} &lt;#{value[1][:value].class.inspect.escape}&gt;</TD>"
+								else
+									tds << "<TD ALIGN=\"LEFT\" COLSPAN=\"3\"><FONT COLOR=\"#666666\">#{value[0]} &lt;#{value[1][:value]}&gt;</FONT></TD>"
 								end
 							end
 						end
 					end
 					if tds.size != 0
-						tds0 << "<TD ROWSPAN=\"#{tds.size}\" VALIGN=\"TOP\" ALIGN=\"RIGHT\">#{scope}</TD>"+tds.join("</TR><TR>")
+						tds0 << "<TD ROWSPAN=\"#{tds.size}\" VALIGN=\"TOP\" ALIGN=\"RIGHT\">const</TD>"+tds.join("</TR><TR>")
+					end
+				end
+				if ! RDot::Options.hide_methods
+					[:class, :instance].each do |scope|
+						tds = []
+						if @modules[mod][scope] != nil
+							if @modules[mod][scope][:attributes] != nil
+								@modules[mod][scope][:attributes].sort.each do |value|
+									if RDot::Options.show_preloaded ||
+											! value[1][:preloaded]
+										if ! value[1][:preloaded]
+											tds << "<TD ALIGN=\"LEFT\">#{attr_header(value)}</TD>"+
+													"<TD ALIGN=\"LEFT\">#{value[1][:file]}</TD>"+
+													"<TD ALIGN=\"RIGHT\">#{value[1][:line]}</TD>"
+										else
+											tds << "<TD> ALIGN=\"LEFT\"<FONT COLOR=\"#666666\">#{attr_header(value)}</FONT></TD>"+
+													"<TD ALIGN=\"LEFT\"><FONT COLOR=\"#666666\">#{value[1][:file]}</FONT></TD>"+
+													"<TD ALIGN=\"RIGHT\"><FONT COLOR=\"#666666\">#{nn(value[1][:line])}</FONT></TD>"
+										end
+									end
+								end
+							end
+							accesses = [:public]
+							accesses << :protected if RDot::Options.show_protected
+							accesses << :private if RDot::Options.show_private
+							accesses.each do |access|
+								if @modules[mod][scope][access] != nil
+									@modules[mod][scope][access].sort.each do |value|
+										if RDot::Options.show_preloaded ||
+												! value[1][:preloaded]
+											if ! value[1][:preloaded]
+												tds << "<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\">#{value[1][:header].escape}</TD>"+
+														"<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\">#{value[1][:file]}</TD>"+
+														"<TD ALIGN=\"RIGHT\" BGCOLOR=\"#{access_color(access)}\">#{value[1][:line]}</TD>"
+											else
+												tds << "<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{value[1][:header].escape}</FONT></TD>"+
+														"<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{value[1][:file]}</FONT></TD>"+
+														"<TD ALIGN=\"RIGHT\" BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{nn(value[1][:line])}</FONT></TD>"
+											end
+										end
+									end
+								end
+							end
+						end
+						if tds.size != 0
+							tds0 << "<TD ROWSPAN=\"#{tds.size}\" VALIGN=\"TOP\" ALIGN=\"RIGHT\">#{scope}</TD>"+tds.join("</TR><TR>")
+						end
 					end
 				end
 				if tds0.size != 0
