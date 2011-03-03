@@ -1,706 +1,706 @@
 #!/usr/bin/ruby -Ku
 
 class String
-	def escape
-		result = ""
-		self.each_byte do |c|
-			if c.chr == ">"
-				result += "&gt;"
-			elsif c.chr == "<"
-				result += "&lt;"
-			elsif c.chr == "&"
-				result += "&amp;"
-			else
-				result += c.chr
-			end
-		end
-		result
-	end
+  def escape
+    result = ""
+    self.each_byte do |c|
+      if c.chr == ">"
+        result += "&gt;"
+      elsif c.chr == "<"
+        result += "&lt;"
+      elsif c.chr == "&"
+        result += "&amp;"
+      else
+        result += c.chr
+      end
+    end
+    result
+  end
 end
 
 class Symbol
-	def <=>(other)
-		self.to_s <=> other.to_s
-	end
+  def <=>(other)
+    self.to_s <=> other.to_s
+  end
 end
 
 module RDot
-	class << self
+  class << self
 
-		def owner_class(method)
-			owner = method.owner
-			smod = owner.inspect
-			if smod[0..7] == "#<Class:"
-				sres = smod[8..smod.index(">")-1]
-				begin
-					eval sres
-				rescue Exception
-					owner
-				end
-			else
-				owner
-			end
-		end
+    def owner_class(method)
+      owner = method.owner
+      smod = owner.inspect
+      if smod[0..7] == "#<Class:"
+        sres = smod[8..smod.index(">")-1]
+        begin
+          eval sres
+        rescue Exception
+          owner
+        end
+      else
+        owner
+      end
+    end
 
-		attr_reader :sources
+    attr_reader :sources
 
-		def register_source(mod,scope,symbol,source)
-			if Array === source && source.size != 0
-				if @sources == nil
-					@sources = {}
-				end
-				if @sources[mod] == nil
-					@sources[mod] = {}
-				end
-				if @sources[mod][scope] == nil
-					@sources[mod][scope] = {}
-				end
-				@sources[mod][scope][symbol] = source[0]
-			end
-		end
+    def register_source(mod,scope,symbol,source)
+      if Array === source && source.size != 0
+        if @sources == nil
+          @sources = {}
+        end
+        if @sources[mod] == nil
+          @sources[mod] = {}
+        end
+        if @sources[mod][scope] == nil
+          @sources[mod][scope] = {}
+        end
+        @sources[mod][scope][symbol] = source[0]
+      end
+    end
 
-		def get_source(mod,scope,symbol)
-			if @sources == nil || @sources[mod] == nil ||
-					@sources[mod][scope] == nil
-				nil
-			else
-				@sources[mod][scope][symbol]
-			end
-		end
+    def get_source(mod,scope,symbol)
+      if @sources == nil || @sources[mod] == nil ||
+          @sources[mod][scope] == nil
+        nil
+      else
+        @sources[mod][scope][symbol]
+      end
+    end
 
-		def source_hash(source)
-			if String === source && source.length != 0
-				if /(eval)/ === source
-					{:file => "(eval)", :line => nil}
-				elsif /(__FORWARDABLE__)/ === source
-					{:file => "(forward)", :line => nil}
-				else
-					a = source.split(":")
-					{:file => a[0].strip, :line => a[1].to_i}
-				end
-			else
-				{:file => "(n/a)", :line => nil}
-			end
-		end
+    def source_hash(source)
+      if String === source && source.length != 0
+        if /(eval)/ === source
+          {:file => "(eval)", :line => nil}
+        elsif /(__FORWARDABLE__)/ === source
+          {:file => "(forward)", :line => nil}
+        else
+          a = source.split(":")
+          {:file => a[0].strip, :line => a[1].to_i}
+        end
+      else
+        {:file => "(n/a)", :line => nil}
+      end
+    end
 
-		def auto_header(arity)
-			if arity == 0
-				""
-			else
-				args = []
-				(0..arity.abs-1).each do |iarg|
-					args << ("a"[0]+iarg).chr
-				end
-				if arity < 0
-					args[arity.abs-1] = "*#{args[arity.abs-1]}"
-				end
-				args.join(",")
-			end
-		end
+    def auto_header(arity)
+      if arity == 0
+        ""
+      else
+        args = []
+        (0..arity.abs-1).each do |iarg|
+          args << ("a"[0]+iarg).chr
+        end
+        if arity < 0
+          args[arity.abs-1] = "*#{args[arity.abs-1]}"
+        end
+        args.join(",")
+      end
+    end
 
-		def method_header(object,source)
-			if source[:line] == nil
-				"#{object.name}(#{auto_header(object.arity)})"
-			else
-				regexp = Regexp.new "#{Regexp.escape(object.name)}" +
-						"\\s*\\((\\w|,|$|\\s|\\*|\\&)*\\)"
-				if @files == nil
-					@files = {}
-				end
-				if @files[source[:file]] == nil
-					@files[source[:file]] = IO.readlines(source[:file])
-				end
-				file = @files[source[:file]]
-				text = file[(source[:line]-1)..(file.size-1)].join("")
-				header = text[regexp]
-				if header == nil
-					"#{object.name}()"
-				else
-					header.delete(" \t\n")
-				end
-			end
-		end
-		
-		attr_reader :immediates
-		
-		def register_immediate(mod)
-		  if @immediates == nil
-		    @immediates = []
-		  end
-		  @immediates << mod
-		end
+    def method_header(object,source)
+      if source[:line] == nil
+        "#{object.name}(#{auto_header(object.arity)})"
+      else
+        regexp = Regexp.new "#{Regexp.escape(object.name)}" +
+            "\\s*\\((\\w|,|$|\\s|\\*|\\&)*\\)"
+        if @files == nil
+          @files = {}
+        end
+        if @files[source[:file]] == nil
+          @files[source[:file]] = IO.readlines(source[:file])
+        end
+        file = @files[source[:file]]
+        text = file[(source[:line]-1)..(file.size-1)].join("")
+        header = text[regexp]
+        if header == nil
+          "#{object.name}()"
+        else
+          header.delete(" \t\n")
+        end
+      end
+    end
+    
+    attr_reader :immediates
+    
+    def register_immediate(mod)
+      if @immediates == nil
+        @immediates = []
+      end
+      @immediates << mod
+    end
 
-		attr_reader :modules
+    attr_reader :modules
 
-		def attribute?(mod,scope,symbol,source)
-			if /in `attr/ === source || /\w=$/ === symbol.to_s
-				true
-			else
-				if @modules[mod][scope] == nil ||
-						@modules[mod][scope][:attributes] == nil
-					false
-				else
-					@modules[mod][scope][:attributes].has_key? symbol
-				end
-			end
-		end
+    def attribute?(mod,scope,symbol,source)
+      if /in `attr/ === source || /\w=$/ === symbol.to_s
+        true
+      else
+        if @modules[mod][scope] == nil ||
+            @modules[mod][scope][:attributes] == nil
+          false
+        else
+          @modules[mod][scope][:attributes].has_key? symbol
+        end
+      end
+    end
 
-		def register_attribute(mod,scope,symbol,source,preloaded,object)
-			if @modules[mod][scope] == nil
-				@modules[mod][scope] = {}
-			end
-			if @modules[mod][scope][:attributes] == nil
-				@modules[mod][scope][:attributes] = {}
-			end
-			if /=$/ === symbol.to_s
-				symbol = symbol.to_s[0..symbol.to_s.length-2].intern
-				access = {:write => true}
-				accessor = :writer
-				if @modules[mod][scope][:public] != nil &&
-						@modules[mod][scope][:public][symbol] != nil
-					register_attribute mod, scope, symbol,
-							@modules[mod][scope][:public][symbol][:source],
-							@modules[mod][scope][:public][symbol][:preloaded],
-							@modules[mod][scope][:public][symbol][:object]
-					@modules[mod][scope][:public].delete symbol
-				end
-				if @modules[mod][scope][:protected] != nil &&
-						@modules[mod][scope][:protected][symbol] != nil
-					register_attribute mod, scope, symbol,
-							@modules[mod][scope][:protected][symbol][:source],
-							@modules[mod][scope][:protected][symbol][:preloaded],
-							@modules[mod][scope][:protected][symbol][:object]
-					@modules[mod][scope][:protected].delete symbol
-				end
-				if @modules[mod][scope][:private] != nil &&
-						@modules[mod][scope][:private][symbol] != nil
-					register_attribute mod, scope, symbol,
-							@modules[mod][scope][:private][symbol][:source],
-							@modules[mod][scope][:private][symbol][:preloaded],
-							@modules[mod][scope][:private][symbol][:object]
-					@modules[mod][scope][:private].delete symbol
-				end
-			else
-				access = {:read => true}
-				accessor = :reader
-			end
-			hash = source_hash(source)
-			if @modules[mod][scope][:attributes][symbol] == nil
-				@modules[mod][scope][:attributes][symbol] = hash
-			end
-			if @modules[mod][scope][:attributes][symbol][:line] == nil
-				@modules[mod][scope][:attributes][symbol].merge! hash
-			end
-			@modules[mod][scope][:attributes][symbol].merge! access
-			if /eval/ === source
-				@modules[mod][scope][:attributes][symbol][:evaluated] = true
-			end
-			if @modules[mod][scope][:attributes][symbol][accessor] != object
-				@modules[mod][scope][:attributes][symbol][:preloaded] =
-						preloaded
-			end
-			@modules[mod][scope][:attributes][symbol][accessor] = object
-		end
+    def register_attribute(mod,scope,symbol,source,preloaded,object)
+      if @modules[mod][scope] == nil
+        @modules[mod][scope] = {}
+      end
+      if @modules[mod][scope][:attributes] == nil
+        @modules[mod][scope][:attributes] = {}
+      end
+      if /=$/ === symbol.to_s
+        symbol = symbol.to_s[0..symbol.to_s.length-2].intern
+        access = {:write => true}
+        accessor = :writer
+        if @modules[mod][scope][:public] != nil &&
+            @modules[mod][scope][:public][symbol] != nil
+          register_attribute mod, scope, symbol,
+              @modules[mod][scope][:public][symbol][:source],
+              @modules[mod][scope][:public][symbol][:preloaded],
+              @modules[mod][scope][:public][symbol][:object]
+          @modules[mod][scope][:public].delete symbol
+        end
+        if @modules[mod][scope][:protected] != nil &&
+            @modules[mod][scope][:protected][symbol] != nil
+          register_attribute mod, scope, symbol,
+              @modules[mod][scope][:protected][symbol][:source],
+              @modules[mod][scope][:protected][symbol][:preloaded],
+              @modules[mod][scope][:protected][symbol][:object]
+          @modules[mod][scope][:protected].delete symbol
+        end
+        if @modules[mod][scope][:private] != nil &&
+            @modules[mod][scope][:private][symbol] != nil
+          register_attribute mod, scope, symbol,
+              @modules[mod][scope][:private][symbol][:source],
+              @modules[mod][scope][:private][symbol][:preloaded],
+              @modules[mod][scope][:private][symbol][:object]
+          @modules[mod][scope][:private].delete symbol
+        end
+      else
+        access = {:read => true}
+        accessor = :reader
+      end
+      hash = source_hash(source)
+      if @modules[mod][scope][:attributes][symbol] == nil
+        @modules[mod][scope][:attributes][symbol] = hash
+      end
+      if @modules[mod][scope][:attributes][symbol][:line] == nil
+        @modules[mod][scope][:attributes][symbol].merge! hash
+      end
+      @modules[mod][scope][:attributes][symbol].merge! access
+      if /eval/ === source
+        @modules[mod][scope][:attributes][symbol][:evaluated] = true
+      end
+      if @modules[mod][scope][:attributes][symbol][accessor] != object
+        @modules[mod][scope][:attributes][symbol][:preloaded] =
+            preloaded
+      end
+      @modules[mod][scope][:attributes][symbol][accessor] = object
+    end
 
-		def register_method(mod,scope,access,symbol,preloaded)
-			if scope == :class
-				object = mod.method(symbol).unbind
-			else
-				object = mod.instance_method(symbol)
-			end
-			if owner_class(object) == mod
-				source = get_source(mod,scope,symbol)
-				if attribute? mod, scope, symbol, source
-					register_attribute mod, scope, symbol, source, preloaded,
-							object
-				else
-					if @modules[mod][scope] == nil
-						@modules[mod][scope] = {}
-					end
-					if @modules[mod][scope][access] == nil
-						@modules[mod][scope][access] = {}
-					end
-					if @modules[mod][scope][access][symbol] == nil
-						@modules[mod][scope][access][symbol] = {}
-					end
-					hash = source_hash(source)
-					@modules[mod][scope][access][symbol].merge! hash
-					if /eval/ === source
-						@modules[mod][scope][access][symbol][:evaluated] = true
-					end
-					if @modules[mod][scope][access][symbol][:object] != object
-						@modules[mod][scope][access][symbol][:preloaded] =
-								preloaded
-					end
-					@modules[mod][scope][access][symbol][:header] =
-							method_header(object,hash)
-					@modules[mod][scope][access][symbol][:source] = source
-					@modules[mod][scope][access][symbol][:object] = object
-				end
-			end
-		end
+    def register_method(mod,scope,access,symbol,preloaded)
+      if scope == :class
+        object = mod.method(symbol).unbind
+      else
+        object = mod.instance_method(symbol)
+      end
+      if owner_class(object) == mod
+        source = get_source(mod,scope,symbol)
+        if attribute? mod, scope, symbol, source
+          register_attribute mod, scope, symbol, source, preloaded,
+              object
+        else
+          if @modules[mod][scope] == nil
+            @modules[mod][scope] = {}
+          end
+          if @modules[mod][scope][access] == nil
+            @modules[mod][scope][access] = {}
+          end
+          if @modules[mod][scope][access][symbol] == nil
+            @modules[mod][scope][access][symbol] = {}
+          end
+          hash = source_hash(source)
+          @modules[mod][scope][access][symbol].merge! hash
+          if /eval/ === source
+            @modules[mod][scope][access][symbol][:evaluated] = true
+          end
+          if @modules[mod][scope][access][symbol][:object] != object
+            @modules[mod][scope][access][symbol][:preloaded] =
+                preloaded
+          end
+          @modules[mod][scope][access][symbol][:header] =
+              method_header(object,hash)
+          @modules[mod][scope][access][symbol][:source] = source
+          @modules[mod][scope][access][symbol][:object] = object
+        end
+      end
+    end
 
-		def register_const(mod,const,preloaded)
-			if mod.const_defined?(const)
-				begin
-					value = mod.const_get(const)
-					mod.ancestors.each do |anc|
-						if anc != mod && anc.const_defined?(const)
-							if anc.const_get(const) == value
-								return nil
-							end
-						end
-					end
-					if @modules[mod][:constants] == nil
-						@modules[mod][:constants] = {}
-					end
-					if @modules[mod][:constants][const] == nil
-						@modules[mod][:constants][const] = {}
-					end
-					oldvalue = @modules[mod][:constants][const][:value]
-					if oldvalue != value
-						@modules[mod][:constants][const][:value] = value
-						@modules[mod][:constants][const][:preloaded] = preloaded
-					end
-				rescue LoadError
+    def register_const(mod,const,preloaded)
+      if mod.const_defined?(const)
+        begin
+          value = mod.const_get(const)
+          mod.ancestors.each do |anc|
+            if anc != mod && anc.const_defined?(const)
+              if anc.const_get(const) == value
+                return nil
+              end
+            end
+          end
+          if @modules[mod][:constants] == nil
+            @modules[mod][:constants] = {}
+          end
+          if @modules[mod][:constants][const] == nil
+            @modules[mod][:constants][const] = {}
+          end
+          oldvalue = @modules[mod][:constants][const][:value]
+          if oldvalue != value
+            @modules[mod][:constants][const][:value] = value
+            @modules[mod][:constants][const][:preloaded] = preloaded
+          end
+        rescue LoadError
 
-				end
-			end
-		end
+        end
+      end
+    end
 
-		def register_module(mod,preloaded)
-			if @modules == nil
-				@modules = {}
-			end
-			if @modules[mod] == nil
-				@modules[mod] = {}
-			end
-			mod.public_methods(false).each do |method|
-				register_method mod, :class, :public, method.intern, preloaded
-			end
-			mod.protected_methods(false).each do |method|
-				register_method mod, :class, :protected, method.intern,
-						preloaded
-			end
-			mod.private_methods(false).each do |method|
-				register_method mod, :class, :private, method.intern, preloaded
-			end
-			mod.public_instance_methods(false).each do |method|
-				register_method mod, :instance, :public, method.intern,
-						preloaded
-			end
-			mod.protected_instance_methods(false).each do |method|
-				register_method mod, :instance, :protected, method.intern,
-						preloaded
-			end
-			mod.private_instance_methods(false).each do |method|
-				register_method mod, :instance, :private, method.intern,
-						preloaded
-			end
-			mod.constants.each do |const|
-				register_const mod, const.intern, preloaded
-			end
-		end
+    def register_module(mod,preloaded)
+      if @modules == nil
+        @modules = {}
+      end
+      if @modules[mod] == nil
+        @modules[mod] = {}
+      end
+      mod.public_methods(false).each do |method|
+        register_method mod, :class, :public, method.intern, preloaded
+      end
+      mod.protected_methods(false).each do |method|
+        register_method mod, :class, :protected, method.intern,
+            preloaded
+      end
+      mod.private_methods(false).each do |method|
+        register_method mod, :class, :private, method.intern, preloaded
+      end
+      mod.public_instance_methods(false).each do |method|
+        register_method mod, :instance, :public, method.intern,
+            preloaded
+      end
+      mod.protected_instance_methods(false).each do |method|
+        register_method mod, :instance, :protected, method.intern,
+            preloaded
+      end
+      mod.private_instance_methods(false).each do |method|
+        register_method mod, :instance, :private, method.intern,
+            preloaded
+      end
+      mod.constants.each do |const|
+        register_const mod, const.intern, preloaded
+      end
+    end
 
-		def register_extend(mod,ext)
-			if @modules == nil
-				@modules = {}
-			end
-			if @modules[mod] == nil
-				@modules[mod] = {}
-			end
-			if @modules[mod][:extensions] == nil
-				@modules[mod][:extensions] = []
-			end
-			if ! @modules[mod][:extensions].include?(ext)
-				@modules[mod][:extensions] << ext
-			end
-		end
+    def register_extend(mod,ext)
+      if @modules == nil
+        @modules = {}
+      end
+      if @modules[mod] == nil
+        @modules[mod] = {}
+      end
+      if @modules[mod][:extensions] == nil
+        @modules[mod][:extensions] = []
+      end
+      if ! @modules[mod][:extensions].include?(ext)
+        @modules[mod][:extensions] << ext
+      end
+    end
 
-		def scan_modules(preloaded)
-			ObjectSpace.each_object Module do |mod|
-				register_module mod, preloaded
-			end
-		end
+    def scan_modules(preloaded)
+      ObjectSpace.each_object Module do |mod|
+        register_module mod, preloaded
+      end
+    end
 
-		def module_preloaded?(mod)
-			if @immediates.include? mod
-			  return false
-			end
-			[:class, :instance].each do |scope|
-				accesses = [:attribute, :public]
-				if RDot::Options.show_protected
-					accesses << :protected
-				end
-				if RDot::Options.show_private
-					accesses << :private
-				end
-				accesses.each do |access|
-					if @modules != nil && @modules[mod] != nil &&
-							@modules[mod][scope] != nil &&
-							@modules[mod][scope][access] != nil
-						@modules[mod][scope][access].each do |key,value|
-							if value[:preloaded] == false
-								return false
-							end
-						end
-					end
-				end
-			end
-			if @modules != nil && @modules[mod] != nil &&
-					@modules[mod][:constants] != nil
-				@modules[mod][:constants].each do |key,value|
-					if value[:preloaded] == false
-						return false
-					end
-				end
-			end
-			return true
-		end
+    def module_preloaded?(mod)
+      if @immediates.include? mod
+        return false
+      end
+      [:class, :instance].each do |scope|
+        accesses = [:attribute, :public]
+        if RDot::Options.show_protected
+          accesses << :protected
+        end
+        if RDot::Options.show_private
+          accesses << :private
+        end
+        accesses.each do |access|
+          if @modules != nil && @modules[mod] != nil &&
+              @modules[mod][scope] != nil &&
+              @modules[mod][scope][access] != nil
+            @modules[mod][scope][access].each do |key,value|
+              if value[:preloaded] == false
+                return false
+              end
+            end
+          end
+        end
+      end
+      if @modules != nil && @modules[mod] != nil &&
+          @modules[mod][:constants] != nil
+        @modules[mod][:constants].each do |key,value|
+          if value[:preloaded] == false
+            return false
+          end
+        end
+      end
+      return true
+    end
 
-		def module_evaluated?(mod)
-			[:class, :instance].each do |scope|
-				accesses = [:attribute, :public]
-				if RDot::Options.show_protected
-					accesses << :protected
-				end
-				if RDot::Options.show_private
-					accesses << :private
-				end
-				accesses.each do |access|
-					if @modules != nil && @modules[mod] != nil &&
-							@modules[mod][scope] != nil &&
-							@modules[mod][scope][access] != nil
-						@modules[mod][scope][access].each do |key,value|
-							if value[:evaluated]
-								return true
-							end
-						end
-					end
-				end
-			end
-			return false
-		end
+    def module_evaluated?(mod)
+      [:class, :instance].each do |scope|
+        accesses = [:attribute, :public]
+        if RDot::Options.show_protected
+          accesses << :protected
+        end
+        if RDot::Options.show_private
+          accesses << :private
+        end
+        accesses.each do |access|
+          if @modules != nil && @modules[mod] != nil &&
+              @modules[mod][scope] != nil &&
+              @modules[mod][scope][access] != nil
+            @modules[mod][scope][access].each do |key,value|
+              if value[:evaluated]
+                return true
+              end
+            end
+          end
+        end
+      end
+      return false
+    end
 
-		def processed?(mod)
-			if @processed == nil
-				@processed = []
-			end
-			@processed.include? mod
-		end
+    def processed?(mod)
+      if @processed == nil
+        @processed = []
+      end
+      @processed.include? mod
+    end
 
-		def module_modules(mod)
-			ancs = mod.ancestors
-			ancs -= [mod]
-			if Class === mod
-				if mod.superclass != nil
-					ancs -= mod.superclass.ancestors
-				end
-			end
-			result = ancs.clone
-			ancs.each do |anc|
-				result -= (anc.ancestors - [anc])
-			end
-			result
-		end
+    def module_modules(mod)
+      ancs = mod.ancestors
+      ancs -= [mod]
+      if Class === mod
+        if mod.superclass != nil
+          ancs -= mod.superclass.ancestors
+        end
+      end
+      result = ancs.clone
+      ancs.each do |anc|
+        result -= (anc.ancestors - [anc])
+      end
+      result
+    end
 
-		def node_color(mod)
-			if module_preloaded? mod
-				if Class === mod
-					if mod <= Exception
-						RDot::Options.color_exception_preloaded
-					else
-						RDot::Options.color_class_preloaded
-					end
-				else
-					RDot::Options.color_module_preloaded
-				end
-			else
-				if module_evaluated? mod
-					if Class === mod
-						if mod <= Exception
-							RDot::Options.color_exception_evaluated
-						else
-							RDot::Options.color_class_evaluated
-						end
-					else
-						"red"
-					end
-				else
-					if Class === mod
-						if mod <= Exception
-							RDot::Options.color_exception
-						else
-							RDot::Options.color_class
-						end
-					else
-						RDot::Options.color_module
-					end
-				end
-			end
-		end
+    def node_color(mod)
+      if module_preloaded? mod
+        if Class === mod
+          if mod <= Exception
+            RDot::Options.color_exception_preloaded
+          else
+            RDot::Options.color_class_preloaded
+          end
+        else
+          RDot::Options.color_module_preloaded
+        end
+      else
+        if module_evaluated? mod
+          if Class === mod
+            if mod <= Exception
+              RDot::Options.color_exception_evaluated
+            else
+              RDot::Options.color_class_evaluated
+            end
+          else
+            "red"
+          end
+        else
+          if Class === mod
+            if mod <= Exception
+              RDot::Options.color_exception
+            else
+              RDot::Options.color_class
+            end
+          else
+            RDot::Options.color_module
+          end
+        end
+      end
+    end
 
-		def node_name(mod)
-			"node_#{mod.inspect.tr("#<>() =,;:","_")}"
-		end
+    def node_name(mod)
+      "node_#{mod.inspect.tr("#<>() =,;:","_")}"
+    end
 
-		def access_color(access)
-			if access == :protected
-				RDot::Options.color_protected
-			elsif access == :private
-				RDot::Options.color_private
-			else
-				"white"
-			end
-		end
+    def access_color(access)
+      if access == :protected
+        RDot::Options.color_protected
+      elsif access == :private
+        RDot::Options.color_private
+      else
+        "white"
+      end
+    end
 
-		def nn(value)
-			if value != nil
-				value
-			else
-				" "
-			end
-		end
+    def nn(value)
+      if value != nil
+        value
+      else
+        " "
+      end
+    end
 
-		def attr_header(value)
-			result = "#{value[0].to_s.escape} ["
-			result += "r" if value[1][:read]
-			result += "w" if value[1][:write]
-			result += "]"
-			result
-		end
+    def attr_header(value)
+      result = "#{value[0].to_s.escape} ["
+      result += "r" if value[1][:read]
+      result += "w" if value[1][:write]
+      result += "]"
+      result
+    end
 
-		def node_rows(mod)
-			result = ""
-			if @modules[mod] != nil
-				tds0 = []
-				if ! RDot::Options.hide_constants
-					tds = []
-					if @modules[mod][:constants] != nil
-						@modules[mod][:constants].sort.each do |value|
-							if RDot::Options.show_preloaded ||
-									! value[1][:preloaded]
-								if ! value[1][:preloaded]
-									tds << "<TD ALIGN=\"LEFT\" COLSPAN=\"3\">#{value[0]} &lt;#{value[1][:value].class.inspect.escape}&gt;</TD>"
-								else
-									tds << "<TD ALIGN=\"LEFT\" COLSPAN=\"3\"><FONT COLOR=\"#666666\">#{value[0]} &lt;#{value[1][:value]}&gt;</FONT></TD>"
-								end
-							end
-						end
-					end
-					if tds.size != 0
-						tds0 << "<TD ROWSPAN=\"#{tds.size}\" VALIGN=\"TOP\" ALIGN=\"RIGHT\">const</TD>"+tds.join("</TR><TR>")
-					end
-				end
-				if ! RDot::Options.hide_methods
-					[:class, :instance].each do |scope|
-						tds = []
-						if @modules[mod][scope] != nil
-							if @modules[mod][scope][:attributes] != nil
-								@modules[mod][scope][:attributes].sort.each do |value|
-									if RDot::Options.show_preloaded ||
-											! value[1][:preloaded]
-										if ! value[1][:preloaded]
-											tds << "<TD ALIGN=\"LEFT\">#{attr_header(value)}</TD>"+
-													"<TD ALIGN=\"LEFT\">#{value[1][:file]}</TD>"+
-													"<TD ALIGN=\"RIGHT\">#{value[1][:line]}</TD>"
-										else
-											tds << "<TD> ALIGN=\"LEFT\"<FONT COLOR=\"#666666\">#{attr_header(value)}</FONT></TD>"+
-													"<TD ALIGN=\"LEFT\"><FONT COLOR=\"#666666\">#{value[1][:file]}</FONT></TD>"+
-													"<TD ALIGN=\"RIGHT\"><FONT COLOR=\"#666666\">#{nn(value[1][:line])}</FONT></TD>"
-										end
-									end
-								end
-							end
-							accesses = [:public]
-							accesses << :protected if RDot::Options.show_protected
-							accesses << :private if RDot::Options.show_private
-							accesses.each do |access|
-								if @modules[mod][scope][access] != nil
-									@modules[mod][scope][access].sort.each do |value|
-										if RDot::Options.show_preloaded ||
-												! value[1][:preloaded]
-											if ! value[1][:preloaded]
-												tds << "<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\">#{value[1][:header].escape}</TD>"+
-														"<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\">#{value[1][:file]}</TD>"+
-														"<TD ALIGN=\"RIGHT\" BGCOLOR=\"#{access_color(access)}\">#{value[1][:line]}</TD>"
-											else
-												tds << "<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{value[1][:header].escape}</FONT></TD>"+
-														"<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{value[1][:file]}</FONT></TD>"+
-														"<TD ALIGN=\"RIGHT\" BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{nn(value[1][:line])}</FONT></TD>"
-											end
-										end
-									end
-								end
-							end
-						end
-						if tds.size != 0
-							tds0 << "<TD ROWSPAN=\"#{tds.size}\" VALIGN=\"TOP\" ALIGN=\"RIGHT\">#{scope}</TD>"+tds.join("</TR><TR>")
-						end
-					end
-				end
-				if tds0.size != 0
-					result = "<TR>#{tds0.join("</TR>\n<TR>")}</TR>"
-				end
-			end
-			result
-		end
+    def node_rows(mod)
+      result = ""
+      if @modules[mod] != nil
+        tds0 = []
+        if ! RDot::Options.hide_constants
+          tds = []
+          if @modules[mod][:constants] != nil
+            @modules[mod][:constants].sort.each do |value|
+              if RDot::Options.show_preloaded ||
+                  ! value[1][:preloaded]
+                if ! value[1][:preloaded]
+                  tds << "<TD ALIGN=\"LEFT\" COLSPAN=\"3\">#{value[0]} &lt;#{value[1][:value].class.inspect.escape}&gt;</TD>"
+                else
+                  tds << "<TD ALIGN=\"LEFT\" COLSPAN=\"3\"><FONT COLOR=\"#666666\">#{value[0]} &lt;#{value[1][:value]}&gt;</FONT></TD>"
+                end
+              end
+            end
+          end
+          if tds.size != 0
+            tds0 << "<TD ROWSPAN=\"#{tds.size}\" VALIGN=\"TOP\" ALIGN=\"RIGHT\">const</TD>"+tds.join("</TR><TR>")
+          end
+        end
+        if ! RDot::Options.hide_methods
+          [:class, :instance].each do |scope|
+            tds = []
+            if @modules[mod][scope] != nil
+              if @modules[mod][scope][:attributes] != nil
+                @modules[mod][scope][:attributes].sort.each do |value|
+                  if RDot::Options.show_preloaded ||
+                      ! value[1][:preloaded]
+                    if ! value[1][:preloaded]
+                      tds << "<TD ALIGN=\"LEFT\">#{attr_header(value)}</TD>"+
+                          "<TD ALIGN=\"LEFT\">#{value[1][:file]}</TD>"+
+                          "<TD ALIGN=\"RIGHT\">#{value[1][:line]}</TD>"
+                    else
+                      tds << "<TD> ALIGN=\"LEFT\"<FONT COLOR=\"#666666\">#{attr_header(value)}</FONT></TD>"+
+                          "<TD ALIGN=\"LEFT\"><FONT COLOR=\"#666666\">#{value[1][:file]}</FONT></TD>"+
+                          "<TD ALIGN=\"RIGHT\"><FONT COLOR=\"#666666\">#{nn(value[1][:line])}</FONT></TD>"
+                    end
+                  end
+                end
+              end
+              accesses = [:public]
+              accesses << :protected if RDot::Options.show_protected
+              accesses << :private if RDot::Options.show_private
+              accesses.each do |access|
+                if @modules[mod][scope][access] != nil
+                  @modules[mod][scope][access].sort.each do |value|
+                    if RDot::Options.show_preloaded ||
+                        ! value[1][:preloaded]
+                      if ! value[1][:preloaded]
+                        tds << "<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\">#{value[1][:header].escape}</TD>"+
+                            "<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\">#{value[1][:file]}</TD>"+
+                            "<TD ALIGN=\"RIGHT\" BGCOLOR=\"#{access_color(access)}\">#{value[1][:line]}</TD>"
+                      else
+                        tds << "<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{value[1][:header].escape}</FONT></TD>"+
+                            "<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{value[1][:file]}</FONT></TD>"+
+                            "<TD ALIGN=\"RIGHT\" BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{nn(value[1][:line])}</FONT></TD>"
+                      end
+                    end
+                  end
+                end
+              end
+            end
+            if tds.size != 0
+              tds0 << "<TD ROWSPAN=\"#{tds.size}\" VALIGN=\"TOP\" ALIGN=\"RIGHT\">#{scope}</TD>"+tds.join("</TR><TR>")
+            end
+          end
+        end
+        if tds0.size != 0
+          result = "<TR>#{tds0.join("</TR>\n<TR>")}</TR>"
+        end
+      end
+      result
+    end
 
-		def node_label(mod)
-			"<<TABLE CELLBORDER=\"0\" CELLSPACING=\"0\"><TR>"+
-					"<TD ALIGN=\"RIGHT\" BGCOLOR=\"#{node_color(mod)}\">"+
-					"<FONT POINT-SIZE=\"12\">#{mod.class.name.downcase}</FONT>"+
-					"</TD><TD COLSPAN=\"3\" ALIGN=\"LEFT\" "+
-					"BGCOLOR=\"#{node_color(mod)}\">"+
-					"<FONT POINT-SIZE=\"12\">#{mod.inspect.escape}</FONT></TD></TR>"+
-					node_rows(mod)+
-					"</TABLE>>"
-		end
+    def node_label(mod)
+      "<<TABLE CELLBORDER=\"0\" CELLSPACING=\"0\"><TR>"+
+          "<TD ALIGN=\"RIGHT\" BGCOLOR=\"#{node_color(mod)}\">"+
+          "<FONT POINT-SIZE=\"12\">#{mod.class.name.downcase}</FONT>"+
+          "</TD><TD COLSPAN=\"3\" ALIGN=\"LEFT\" "+
+          "BGCOLOR=\"#{node_color(mod)}\">"+
+          "<FONT POINT-SIZE=\"12\">#{mod.inspect.escape}</FONT></TD></TR>"+
+          node_rows(mod)+
+          "</TABLE>>"
+    end
 
-		def out_module(mod)
-			if ! processed?(mod)
-				@processed << mod
-				RDot::Options.output << "\t#{node_name(mod)}" +
-						"[label=#{node_label(mod)}];\n"
-				ancs = mod.ancestors - [mod]
-				if Class === mod
-					if mod.superclass != nil
-						out_module mod.superclass
-						RDot::Options.output << "\t\t" +
-								"#{node_name(mod.superclass)} -> " +
-								"#{node_name(mod)}[color=\"" +
-								"#{RDot::Options.color_inherited}\"];\n"
-						ancs -= mod.superclass.ancestors
-					end
-				end
-				dels = ancs.clone
-				dels.each do |del|
-					ancs -= (del.ancestors - [del])
-				end
-				ancs.each do |anc|
-					out_module anc
-					RDot::Options.output << "\t\t" +
-							"#{node_name(anc)} -> " +
-							"#{node_name(mod)}[color=\"" +
-							"#{RDot::Options.color_included}\"];\n"
-				end
-				if @modules[mod] != nil &&
-						@modules[mod][:extensions] != nil
-					@modules[mod][:extensions].each do |ext|
-						out_module ext
-						RDot::Options.output << "\t\t" +
-								"#{node_name(ext)} -> " +
-								"#{node_name(mod)}[color=\"" +
-								"#{RDot::Options.color_extended}\"];\n"
-					end
-				end
-			end
-		end
+    def out_module(mod)
+      if ! processed?(mod)
+        @processed << mod
+        RDot::Options.output << "\t#{node_name(mod)}" +
+            "[label=#{node_label(mod)}];\n"
+        ancs = mod.ancestors - [mod]
+        if Class === mod
+          if mod.superclass != nil
+            out_module mod.superclass
+            RDot::Options.output << "\t\t" +
+                "#{node_name(mod.superclass)} -> " +
+                "#{node_name(mod)}[color=\"" +
+                "#{RDot::Options.color_inherited}\"];\n"
+            ancs -= mod.superclass.ancestors
+          end
+        end
+        dels = ancs.clone
+        dels.each do |del|
+          ancs -= (del.ancestors - [del])
+        end
+        ancs.each do |anc|
+          out_module anc
+          RDot::Options.output << "\t\t" +
+              "#{node_name(anc)} -> " +
+              "#{node_name(mod)}[color=\"" +
+              "#{RDot::Options.color_included}\"];\n"
+        end
+        if @modules[mod] != nil &&
+            @modules[mod][:extensions] != nil
+          @modules[mod][:extensions].each do |ext|
+            out_module ext
+            RDot::Options.output << "\t\t" +
+                "#{node_name(ext)} -> " +
+                "#{node_name(mod)}[color=\"" +
+                "#{RDot::Options.color_extended}\"];\n"
+          end
+        end
+      end
+    end
 
-		def graph_label
-			if RDot::Options.title == nil
-				"\"RDot: #{RDot::Options.includes.join(", ")}\""
-			else
-				"\"#{RDot::Options.title}\""
-			end
-		end
+    def graph_label
+      if RDot::Options.title == nil
+        "\"RDot: #{RDot::Options.includes.join(", ")}\""
+      else
+        "\"#{RDot::Options.title}\""
+      end
+    end
 
-		def out_modules
-			RDot::Options.output << "digraph graph_RDot{\n"
-			RDot::Options.output << "\tgraph[rankdir=LR,\n\t\tsplines=true,\n"+
-					"\t\tfontname=\"Droid Sans\",\n"+
-					"\t\tfontsize=24,\n\t\tlabelloc=t,\n"+
-					"\t\tlabel=#{graph_label}\n\t];\n"
-			RDot::Options.output << "\tnode[shape=plaintext,\n"+
-					"\t\tfontname=\"Droid Sans Mono\",\n\t\tfontsize=9\n\t];\n"
-			RDot::Options.output << "\tedge[dir=back,\n\t\tarrowtail=vee\n\t];\n"
-			RDot::Options.output << "\n"
-			ObjectSpace.each_object Module do |mod|
-				if ! RDot::Options.except?(mod)
-					if RDot::Options.show_preloaded || ! module_preloaded?(mod)
-						out_module mod
-					end
-				end
-			end
-			RDot::Options.output << "}\n"
-		end
-	end
+    def out_modules
+      RDot::Options.output << "digraph graph_RDot{\n"
+      RDot::Options.output << "\tgraph[rankdir=LR,\n\t\tsplines=true,\n"+
+          "\t\tfontname=\"Droid Sans\",\n"+
+          "\t\tfontsize=24,\n\t\tlabelloc=t,\n"+
+          "\t\tlabel=#{graph_label}\n\t];\n"
+      RDot::Options.output << "\tnode[shape=plaintext,\n"+
+          "\t\tfontname=\"Droid Sans Mono\",\n\t\tfontsize=9\n\t];\n"
+      RDot::Options.output << "\tedge[dir=back,\n\t\tarrowtail=vee\n\t];\n"
+      RDot::Options.output << "\n"
+      ObjectSpace.each_object Module do |mod|
+        if ! RDot::Options.except?(mod)
+          if RDot::Options.show_preloaded || ! module_preloaded?(mod)
+            out_module mod
+          end
+        end
+      end
+      RDot::Options.output << "}\n"
+    end
+  end
 end
 
 module RDot
 
-	VERSION = "0.9.2"
-	if $stdout.stat.chardev?
-		TITLE = "\e[1mRDot v#{RDot::VERSION}\e[0m - GraphViz class diagrams" +
-				" for Ruby\n\thttp://github.com/shikhalev/rdot/"
-	else
-		TITLE = "RDot v#{RDot::VERSION} - GraphViz class diagrams for Ruby\n" +
-				"\thttp://github.com/shikhalev/rdot/"
-	end
-	AUTHOR = "Ivan Shikhalev <shikhalev@gmail.com>\n" +
-			"\thttp://github.com/shikhalev/"
-	LICENSE = "GNU General Public License, see COPYING\n" +
-			"\thttp://www.gnu.org/licenses/gpl.html"
+  VERSION = "0.9.2"
+  if $stdout.stat.chardev?
+    TITLE = "\e[1mRDot v#{RDot::VERSION}\e[0m - GraphViz class diagrams" +
+        " for Ruby\n\thttp://github.com/shikhalev/rdot/"
+  else
+    TITLE = "RDot v#{RDot::VERSION} - GraphViz class diagrams for Ruby\n" +
+        "\thttp://github.com/shikhalev/rdot/"
+  end
+  AUTHOR = "Ivan Shikhalev <shikhalev@gmail.com>\n" +
+      "\thttp://github.com/shikhalev/"
+  LICENSE = "GNU General Public License, see COPYING\n" +
+      "\thttp://www.gnu.org/licenses/gpl.html"
 
-	module Options
+  module Options
 
-		@output = $stdout
-		@excludes = []
-		@includes = []
-		@title = nil
-		@color_class = "mediumaquamarine"
-		@color_class_preloaded = "mediumseagreen"
-		@color_class_evaluated = "aquamarine"
-		@color_exception = "lightcoral"
-		@color_exception_preloaded = "chocolate"
-		@color_exception_evaluated = "lightpink"
-		@color_module = "skyblue"
-		@color_module_preloaded = "steelblue"
-		@color_inherited = "steelblue"
-		@color_included = "skyblue"
-		@color_extended = "olivedrab"
-		@color_protected = "#EEEEEE"
-		@color_private = "#DDDDDD"
-		@show_protected = false
-		@show_private = false
-		@show_preloaded = false
-		@hide_methods = false
-		@hide_constants = false
-		@exceptions = []
-		class << self
-			attr_reader :output, :includes, :excludes, :title, :color_class,
-					:color_class_preloaded, :color_class_evaluated,
-					:color_exception, :color_exception_preloaded,
-					:color_exception_evaluated, :color_module,
-					:color_module_preloaded, :color_inherited, :color_included,
-					:color_extended, :color_protected, :color_private,
-					:show_protected, :show_private, :show_preloaded,
-					:hide_constants, :hide_methods, :exceptions
+    @output = $stdout
+    @excludes = []
+    @includes = []
+    @title = nil
+    @color_class = "mediumaquamarine"
+    @color_class_preloaded = "mediumseagreen"
+    @color_class_evaluated = "aquamarine"
+    @color_exception = "lightcoral"
+    @color_exception_preloaded = "chocolate"
+    @color_exception_evaluated = "lightpink"
+    @color_module = "skyblue"
+    @color_module_preloaded = "steelblue"
+    @color_inherited = "steelblue"
+    @color_included = "skyblue"
+    @color_extended = "olivedrab"
+    @color_protected = "#EEEEEE"
+    @color_private = "#DDDDDD"
+    @show_protected = false
+    @show_private = false
+    @show_preloaded = false
+    @hide_methods = false
+    @hide_constants = false
+    @exceptions = []
+    class << self
+      attr_reader :output, :includes, :excludes, :title, :color_class,
+          :color_class_preloaded, :color_class_evaluated,
+          :color_exception, :color_exception_preloaded,
+          :color_exception_evaluated, :color_module,
+          :color_module_preloaded, :color_inherited, :color_included,
+          :color_extended, :color_protected, :color_private,
+          :show_protected, :show_private, :show_preloaded,
+          :hide_constants, :hide_methods, :exceptions
 
-			def except?(mod)
-				@exceptions.each do |cls|
-					if mod <= cls
-						return true
-					end
-				end
-				return false
-			end
-		end
-	end
+      def except?(mod)
+        @exceptions.each do |cls|
+          if mod <= cls
+            return true
+          end
+        end
+        return false
+      end
+    end
+  end
 end
 
 class Module
-	def method_added(method)
-		RDot.register_source self, :instance, method, caller
-	end
-	def singleton_method_added(method)
-		RDot.register_source self, :class, method, caller
-	end
-	def extended(obj)
-		if Module === obj
-			RDot.register_extend obj, self
-		end
-	end
+  def method_added(method)
+    RDot.register_source self, :instance, method, caller
+  end
+  def singleton_method_added(method)
+    RDot.register_source self, :class, method, caller
+  end
+  def extended(obj)
+    if Module === obj
+      RDot.register_extend obj, self
+    end
+  end
 end
 
 RDot.scan_modules(true)
@@ -709,231 +709,231 @@ require "optparse"
 
 module RDot
 
-	module Options
+  module Options
 
-		opts = OptionParser.new
-		opts.on("-h","--help",
-				"Show short help and exit.") do
-			puts "#{RDot::TITLE}\n\n#{opts.to_s}"
-			exit 0
-		end
-		opts.on("-I","--info","=[INFO]",Array,
-				"Show some program information and exit.",
-				"Argument may by comma-separated set of:",
-				"    'about' - title with version",
-				"               and homepage,",
-				"    'author' - author name with e-mail,",
-				"    'license' - license info,",
-				"    'usage' - command line arguments,",
-				"    'version' - current version;",
-				"or one of predefined sets:",
-				"    'all' = 'about,author,license,usage',",
-				"    'help' = 'about,usage',",
-				"    'info' (or no argument) =",
-		        "                  'about,author,license'.") do |arg|
-			if arg == nil || arg == ["info"]
-				arg = ["about","author","license"]
-			elsif arg == ["all"]
-				arg = ["about","author","license","usage"]
-			elsif arg == ["help"]
-				arg = ["about","usage"]
-			end
-			arg.each_with_index do |value,index|
-				case value
-				when "about"
-					puts "#{RDot::TITLE}"
-					if index < arg.size-1
-						puts ""
-					end
-				when "author"
-					if arg.size > 1
-						puts "Author: #{RDot::AUTHOR}"
-					else
-						puts "#{RDot::AUTHOR}"
-					end
-				when "license"
-					if arg.size > 1
-						puts "License: #{RDot::LICENSE}"
-					else
-						puts "#{RDot::LICENSE}"
-					end
-				when "usage"
-					if index > 0 && ! (arg[index-1] == "about")
-						puts ""
-					end
-					puts "#{opts.to_s}"
-				when "version"
-					if ! arg.include? "about"
-						if arg.size > 1
-							puts "Version: #{RDot::VERSION}"
-						else
-							puts "#{RDot::VERSION}"
-						end
-					end
-				end
-			end
-			exit 0
-		end
-		opts.on("--about",
-				"Show program title with version and exit.") do
-			puts "#{RDot::TITLE}"
-			exit 0
-		end
-		opts.on("--author",
-				"Show author information and exit.") do
-			puts "#{RDot::AUTHOR}"
-			exit 0
-		end
-		opts.on("-L","--license",
-				"Show license information and exit.") do
-			puts "#{RDot::LICENSE}"
-			exit 0
-		end
-		opts.on("-?","--usage",
-				"Show command line arguments and exit.") do
-			puts "#{opts.to_s}"
-			exit 0
-		end
-		opts.on("-V","--version",
-				"Show version and exit.") do
-			puts "#{RDot::VERSION}"
-			exit 0
-		end
-		opts.on("-x","--exclude","-p","--preload","=LIBS",Array,
-				"Comma-separated list of libraries",
-				"which must be excluded from output graph.",
-				"This libs will be preloaded before start",
-				"registering any changes like standard",
-				"objects.") do |arg|
-			@excludes += arg
-		end
-		opts.on("-i","--include","--input","=LIBS",Array,
-				"Comma-separated list of libraries for",
-				"processing. Also libs may be specified",
-				"in command line without any key.") do |arg|
-			@includes += arg
-		end
-		opts.on("-o","--output","=[FILE]",String,
-				"Send output to file instead stdout.",
-				"'rdot.dot' if no argument specified.") do |arg|
-			if arg == nil
-				arg = 'rdot.dot'
-			end
-			@output = File.open(arg,"w")
-		end
-		opts.on("-t","--title","=TITLE",String,
-				"Set graph title.") do |arg|
-			@title = arg
-		end
-		opts.on("--color-class","=COLOR",String,
-				"Set class-node color. See:",
-				"http://graphviz.org/doc/info/colors.html") do |arg|
-			@color_class = arg
-		end
-		opts.on("--color-class-preloaded","=COLOR",String,
-				"Set node color for preloaded classes.") do |arg|
-			@color_class_preloaded = arg
-		end
-		opts.on("--color-class-evaluated","=COLOR",String,
-				"Set node color for evaluated classes.") do |arg|
-			@color_class_evaluated = arg
-		end
-		opts.on("--color-exception","=COLOR",String,
-				"Set node color for exception classes.") do |arg|
-			@color_exception = arg
-		end
-		opts.on("--color-exception-preloaded","=COLOR",String,
-				"Set node color for preloaded exceptions.") do |arg|
-			@color_exception_preloaded = arg
-		end
-		opts.on("--color-exception-evaluated","=COLOR",String,
-				"Set node color for evaluated exceptions.") do |arg|
-			@color_exception_evaluated = arg
-		end
-		opts.on("--color-module","=COLOR",String,
-				"Set node color for modules.") do |arg|
-			@color_module = arg
-		end
-		opts.on("--color-module-preloaded","=COLOR",String,
-				"Set node color for preloaded modules.") do |arg|
-			@color_module_preloaded = arg
-		end
-		opts.on("--color-inherited","=COLOR",String,
-				"Set inheritance-edge color.") do |arg|
-			@color_inherited = arg
-		end
-		opts.on("--color-included","=COLOR",String,
-				"Set include-edge color.") do |arg|
-			@color_included = arg
-		end
-		opts.on("--color-extended","=COLOR",String,
-				"Set extension-edge color.") do |arg|
-			@color_extended = arg
-		end
-		opts.on("--color-protected","=COLOR",String,
-				"Set color marker for protected methods.") do |arg|
-			@color_protected = arg
-		end
-		opts.on("--color-private","=COLOR",String,
-				"Set color marker for private methods.") do |arg|
-			@color_private = arg
-		end
-		opts.on("-s","--show-protected",TrueClass,
-				"Show public and protected methods.") do
-			@show_protected = true
-		end
-		opts.on("-S","--show-private",TrueClass,
-				"Show public, protected and private methods.") do
-			@show_protected = true
-			@show_private = true
-		end
-		opts.on("-z","--show-preloaded",TrueClass,
-				"Show methods etc. for preloaded classes.",
-				"Use this to see the structure of standard",
-				"Ruby classes.") do
-			@show_preloaded = true
-		end
-		opts.on("-M","--hide-methods",TrueClass,
-				"Hide all methods from diagram.") do
-			@hide_methods = true
-		end
-		opts.on("-C","--hide-constants",TrueClass,
-				"Hide all constants.") do
-			@hide_constants = true
-		end
-		opts.on("-e","--except","=[LIST]",Array,
-				"Except classes (with children) from",
-		        "processing. If no classes specified,",
-		        "the Exception will excepted.") do |arg|
-			if arg == nil
-				@exceptions << Exception
-			else
-				arg.each do |value|
-					begin
-						cls = eval value
-						if Class === cls
-							@exceptions << cls
-						end
-					rescue Exception
-					end
-				end
-			end
-		end
-		opts.on
-		rest = opts.parse(ARGV)
-		rest.each do |arg|
-			list = arg.split(",")
-			@includes += list
-		end
-	end
+    opts = OptionParser.new
+    opts.on("-h","--help",
+        "Show short help and exit.") do
+      puts "#{RDot::TITLE}\n\n#{opts.to_s}"
+      exit 0
+    end
+    opts.on("-I","--info","=[INFO]",Array,
+        "Show some program information and exit.",
+        "Argument may by comma-separated set of:",
+        "    'about' - title with version",
+        "               and homepage,",
+        "    'author' - author name with e-mail,",
+        "    'license' - license info,",
+        "    'usage' - command line arguments,",
+        "    'version' - current version;",
+        "or one of predefined sets:",
+        "    'all' = 'about,author,license,usage',",
+        "    'help' = 'about,usage',",
+        "    'info' (or no argument) =",
+            "                  'about,author,license'.") do |arg|
+      if arg == nil || arg == ["info"]
+        arg = ["about","author","license"]
+      elsif arg == ["all"]
+        arg = ["about","author","license","usage"]
+      elsif arg == ["help"]
+        arg = ["about","usage"]
+      end
+      arg.each_with_index do |value,index|
+        case value
+        when "about"
+          puts "#{RDot::TITLE}"
+          if index < arg.size-1
+            puts ""
+          end
+        when "author"
+          if arg.size > 1
+            puts "Author: #{RDot::AUTHOR}"
+          else
+            puts "#{RDot::AUTHOR}"
+          end
+        when "license"
+          if arg.size > 1
+            puts "License: #{RDot::LICENSE}"
+          else
+            puts "#{RDot::LICENSE}"
+          end
+        when "usage"
+          if index > 0 && ! (arg[index-1] == "about")
+            puts ""
+          end
+          puts "#{opts.to_s}"
+        when "version"
+          if ! arg.include? "about"
+            if arg.size > 1
+              puts "Version: #{RDot::VERSION}"
+            else
+              puts "#{RDot::VERSION}"
+            end
+          end
+        end
+      end
+      exit 0
+    end
+    opts.on("--about",
+        "Show program title with version and exit.") do
+      puts "#{RDot::TITLE}"
+      exit 0
+    end
+    opts.on("--author",
+        "Show author information and exit.") do
+      puts "#{RDot::AUTHOR}"
+      exit 0
+    end
+    opts.on("-L","--license",
+        "Show license information and exit.") do
+      puts "#{RDot::LICENSE}"
+      exit 0
+    end
+    opts.on("-?","--usage",
+        "Show command line arguments and exit.") do
+      puts "#{opts.to_s}"
+      exit 0
+    end
+    opts.on("-V","--version",
+        "Show version and exit.") do
+      puts "#{RDot::VERSION}"
+      exit 0
+    end
+    opts.on("-x","--exclude","-p","--preload","=LIBS",Array,
+        "Comma-separated list of libraries",
+        "which must be excluded from output graph.",
+        "This libs will be preloaded before start",
+        "registering any changes like standard",
+        "objects.") do |arg|
+      @excludes += arg
+    end
+    opts.on("-i","--include","--input","=LIBS",Array,
+        "Comma-separated list of libraries for",
+        "processing. Also libs may be specified",
+        "in command line without any key.") do |arg|
+      @includes += arg
+    end
+    opts.on("-o","--output","=[FILE]",String,
+        "Send output to file instead stdout.",
+        "'rdot.dot' if no argument specified.") do |arg|
+      if arg == nil
+        arg = 'rdot.dot'
+      end
+      @output = File.open(arg,"w")
+    end
+    opts.on("-t","--title","=TITLE",String,
+        "Set graph title.") do |arg|
+      @title = arg
+    end
+    opts.on("--color-class","=COLOR",String,
+        "Set class-node color. See:",
+        "http://graphviz.org/doc/info/colors.html") do |arg|
+      @color_class = arg
+    end
+    opts.on("--color-class-preloaded","=COLOR",String,
+        "Set node color for preloaded classes.") do |arg|
+      @color_class_preloaded = arg
+    end
+    opts.on("--color-class-evaluated","=COLOR",String,
+        "Set node color for evaluated classes.") do |arg|
+      @color_class_evaluated = arg
+    end
+    opts.on("--color-exception","=COLOR",String,
+        "Set node color for exception classes.") do |arg|
+      @color_exception = arg
+    end
+    opts.on("--color-exception-preloaded","=COLOR",String,
+        "Set node color for preloaded exceptions.") do |arg|
+      @color_exception_preloaded = arg
+    end
+    opts.on("--color-exception-evaluated","=COLOR",String,
+        "Set node color for evaluated exceptions.") do |arg|
+      @color_exception_evaluated = arg
+    end
+    opts.on("--color-module","=COLOR",String,
+        "Set node color for modules.") do |arg|
+      @color_module = arg
+    end
+    opts.on("--color-module-preloaded","=COLOR",String,
+        "Set node color for preloaded modules.") do |arg|
+      @color_module_preloaded = arg
+    end
+    opts.on("--color-inherited","=COLOR",String,
+        "Set inheritance-edge color.") do |arg|
+      @color_inherited = arg
+    end
+    opts.on("--color-included","=COLOR",String,
+        "Set include-edge color.") do |arg|
+      @color_included = arg
+    end
+    opts.on("--color-extended","=COLOR",String,
+        "Set extension-edge color.") do |arg|
+      @color_extended = arg
+    end
+    opts.on("--color-protected","=COLOR",String,
+        "Set color marker for protected methods.") do |arg|
+      @color_protected = arg
+    end
+    opts.on("--color-private","=COLOR",String,
+        "Set color marker for private methods.") do |arg|
+      @color_private = arg
+    end
+    opts.on("-s","--show-protected",TrueClass,
+        "Show public and protected methods.") do
+      @show_protected = true
+    end
+    opts.on("-S","--show-private",TrueClass,
+        "Show public, protected and private methods.") do
+      @show_protected = true
+      @show_private = true
+    end
+    opts.on("-z","--show-preloaded",TrueClass,
+        "Show methods etc. for preloaded classes.",
+        "Use this to see the structure of standard",
+        "Ruby classes.") do
+      @show_preloaded = true
+    end
+    opts.on("-M","--hide-methods",TrueClass,
+        "Hide all methods from diagram.") do
+      @hide_methods = true
+    end
+    opts.on("-C","--hide-constants",TrueClass,
+        "Hide all constants.") do
+      @hide_constants = true
+    end
+    opts.on("-e","--except","=[LIST]",Array,
+        "Except classes (with children) from",
+            "processing. If no classes specified,",
+            "the Exception will excepted.") do |arg|
+      if arg == nil
+        @exceptions << Exception
+      else
+        arg.each do |value|
+          begin
+            cls = eval value
+            if Class === cls
+              @exceptions << cls
+            end
+          rescue Exception
+          end
+        end
+      end
+    end
+    opts.on
+    rest = opts.parse(ARGV)
+    rest.each do |arg|
+      list = arg.split(",")
+      @includes += list
+    end
+  end
 end
 
 if RDot::Options.includes.include?("optparse")
-	RDot.scan_modules(false)
+  RDot.scan_modules(false)
 end
 
 RDot::Options.excludes.each do |lib|
-	require lib
+  require lib
 end
 
 RDot.scan_modules(true)
@@ -946,7 +946,7 @@ end
 set_trace_func trace_func
 
 RDot::Options.includes.each do |lib|
-	require lib
+  require lib
 end
 
 set_trace_func nil
