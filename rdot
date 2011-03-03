@@ -120,6 +120,15 @@ module RDot
 				end
 			end
 		end
+		
+		attr_reader :immediates
+		
+		def register_immediate(mod)
+		  if @immediates == nil
+		    @immediates = []
+		  end
+		  @immediates << mod
+		end
 
 		attr_reader :modules
 
@@ -315,6 +324,9 @@ module RDot
 		end
 
 		def module_preloaded?(mod)
+			if @immediates.include? mod
+			  return false
+			end
 			[:class, :instance].each do |scope|
 				accesses = [:attribute, :public]
 				if RDot::Options.show_protected
@@ -926,9 +938,18 @@ end
 
 RDot.scan_modules(true)
 
+trace_func = Proc.new do |event, file, line, id, binding, classname|
+  if event == "class"
+    RDot.register_immediate(binding.eval("self"))
+  end
+end
+set_trace_func trace_func
+
 RDot::Options.includes.each do |lib|
 	require lib
 end
+
+set_trace_func nil
 
 RDot.scan_modules(false)
 
