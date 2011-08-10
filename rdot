@@ -202,12 +202,16 @@ module RDot
     end
 
     def register_method(mod,scope,access,symbol,preloaded)
-      if scope == :class
-        object = mod.method(symbol).unbind
-      else
-        object = mod.instance_method(symbol)
+      begin
+	if scope == :class
+	  object = mod.method(symbol).unbind
+	else
+	  object = mod.instance_method(symbol)
+	end
+      rescue
+	object = nil
       end
-      if owner_class(object) == mod
+      if object && owner_class(object) == mod
         source = get_source(mod,scope,symbol)
         if attribute? mod, scope, symbol, source
           register_attribute mod, scope, symbol, source, preloaded,
@@ -323,6 +327,9 @@ module RDot
     end
 
     def module_preloaded?(mod)
+      if @immediates == nil
+	return false
+      end
       if @immediates.include? mod
         return false
       end
