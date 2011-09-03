@@ -94,15 +94,16 @@ module RDot
         if arity < 0
           args[arity.abs-1] = "*#{args[arity.abs-1]}"
         end
-        args.join(",")
+        "(#{args.join(", ")})"
       end
     end
 
     def method_header(object,source)
       if source[:line] == nil
-        "#{object.name}(#{auto_header(object.arity)})"
+        "#{object.name}#{auto_header(object.arity)}"
       else
-        regexp = Regexp.new(Regexp.escape("#{object.name}")+'\s*\((\w|,|=|\{|\}|\s|\*|\&)*\)', Regexp::MULTILINE)
+        regexp = Regexp.compile Regexp.escape(object.name) +
+            '([^\n]|,\n)*(\n|;)', Regexp::MULTILINE
         if @files == nil
           @files = {}
         end
@@ -115,7 +116,7 @@ module RDot
         if header == nil
           "#{object.name}()"
         else
-          header.delete(" \t\n")
+          header.gsub /\s+/, ' '
         end
       end
     end
