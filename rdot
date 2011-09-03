@@ -120,6 +120,7 @@ module RDot
         end
         file = @files[source[:file]]
         text = file[(xsub(source[:line],5))..(file.size-1)].join("")
+        text.gsub! /#.*?\n/, ''
         text.gsub! /,\s+/m, ', '
         text.gsub! /\{\s+/m, '{ '
         text.gsub! />\s+/, '> '
@@ -131,7 +132,7 @@ module RDot
         text.gsub! /\/\s+/, '/ '
         text.gsub! /\|\s+/, '| '
         text.gsub! /&\s+/, '& '
-        text.gsub! /=\s+/, '= '
+        text.gsub! /\=\s+/, '= '
         header = text[regexp]
         if header == nil
          "#{object.name}#{auto_header(object.arity)}"
