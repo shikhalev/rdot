@@ -131,6 +131,7 @@ module RDot
         text.gsub! /\/\s+/, '/ '
         text.gsub! /\|\s+/, '| '
         text.gsub! /&\s+/, '& '
+        text.gsub! /=\s+/, '= '
         header = text[regexp]
         if header == nil
          "#{object.name}#{auto_header(object.arity)}"
