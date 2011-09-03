@@ -133,7 +133,7 @@ module RDot
         text.gsub! /&\s+/, '& '
         header = text[regexp]
         if header == nil
-        "#{object.name}#{auto_header(object.arity)}"
+         "#{object.name}#{auto_header(object.arity)}"
         else
           header.gsub /\s+/, ' '
         end
