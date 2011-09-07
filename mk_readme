@@ -1,0 +1,4 @@
+#!/bin/bash
+
+rdot --info=all | sed 's: - : — :g' > README
+echo -e '\nSamples:\n\tsee at http://github.com/shikhalev/rdot/downloads' >> README
