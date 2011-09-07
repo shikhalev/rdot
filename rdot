@@ -111,7 +111,7 @@ module RDot
         "#{object.name}#{auto_header(object.arity)}"
       else
         regexp = Regexp.compile Regexp.escape(object.name) +
-            '([^\n])*(\n|;)', Regexp::MULTILINE
+            '([^!\?][^\n]*)?(\n|;)', Regexp::MULTILINE
         if @files == nil
           @files = {}
         end
@@ -120,7 +120,8 @@ module RDot
         end
         file = @files[source[:file]]
         text = file[(xsub(source[:line],5))..(file.size-1)].join("")
-        text.gsub! /#.*?\n/, ''
+        text.gsub! /^\s*#.*?\n/, ''
+        text.gsub! /#.*?\n/, "\n"
         text.gsub! /,\s+/m, ', '
         text.gsub! /\{\s+/m, '{ '
         text.gsub! />\s+/, '> '
