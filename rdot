@@ -107,38 +107,41 @@ module RDot
     end
 
     def method_header(object,source)
-      if source[:line] == nil
-        "#{object.name}#{auto_header(object.arity)}"
+      if RDot::Options.hide_arguments
+        "#{object.name}"
       else
-        regexp = Regexp.compile Regexp.escape(object.name) +
-            '([^!\?][^\n]*)?(\n|;)', Regexp::MULTILINE
-        if @files == nil
-          @files = {}
-        end
-        if @files[source[:file]] == nil
-          @files[source[:file]] = IO.readlines(source[:file])
-        end
-        file = @files[source[:file]]
-        text = file[(xsub(source[:line],5))..(file.size-1)].join("")
-        text.gsub! /^\s*#.*?\n/, ''
-        text.gsub! /#.*?\n/, "\n"
-        text.gsub! /,\s+/m, ', '
-        text.gsub! /\{\s+/m, '{ '
-        text.gsub! />\s+/, '> '
-        text.gsub! /\(\s+/, '( '
-        text.gsub! /\[\s+/, '[ '
-        text.gsub! /\+\s+/, '+ '
-        text.gsub! /-\s+/, '- '
-        text.gsub! /\*\s+/, '* '
-        text.gsub! /\/\s+/, '/ '
-        text.gsub! /\|\s+/, '| '
-        text.gsub! /&\s+/, '& '
-        text.gsub! /\=\s+/, '= '
-        header = text[regexp]
-        if header == nil
-         "#{object.name}#{auto_header(object.arity)}"
-        else
-          header.gsub /\s+/, ' '
+        begin
+          line = source[:line]
+          file = source[:file]
+          # load file text
+          @files ||= {}
+          @files[file] ||= IO.readlines file
+          text = @files[file]
+          # make header
+          header = ""
+          scan_re = Regexp.compile "^\\s*def\\s+(?:\\w+\\.)?#{Regexp.escape(object.name)}"
+          alias_re = Regexp.compile "^\\s*alias(?:_method)?\\s+(?:\\w+\\.)?:?#{Regexp.escape(object.name)}\\s*,?\\s+:?([^\\s]*)\\s*"
+          current_ln = line - 1
+          begin
+            current_txt = text[current_ln].gsub /#.*$/, ''
+            # may be alias...
+            if alias_re === current_txt
+              header = "#{object.name} -> #{current_txt.gsub(alias_re, '\1')}"
+              return header
+            end
+            header = current_txt + header
+            current_ln -= 1
+          end until current_ln <= 0 || scan_re === current_txt
+          header.gsub! /\s+/m, ' '
+          brace_re = Regexp.compile ".*?\\s*def\\s+(?:\\w+\\.)?(#{Regexp.escape(object.name)}\\((?:[^\\(\\)]+|\\([^\\(\\)]+\\))*?\\)).*"
+          nonbrace_re = Regexp.compile ".*?\\s*def\\s+(?:\\w+\\.)?(#{Regexp.escape(object.name)}.*$)"
+          if brace_re === header
+            header.gsub(brace_re, '\1')
+          else
+            header.gsub(nonbrace_re, '\1')
+          end
+        rescue
+          "#{object.name}#{auto_header(object.arity)}"
         end
       end
     end
@@ -695,6 +698,7 @@ module RDot
     @show_preloaded = false
     @hide_methods = false
     @hide_constants = false
+    @hide_arguments = false
     @exceptions = []
     class << self
       attr_reader :output, :includes, :excludes, :title, :color_class,
@@ -704,7 +708,7 @@ module RDot
           :color_module_preloaded, :color_inherited, :color_included,
           :color_extended, :color_protected, :color_private,
           :show_protected, :show_private, :show_preloaded,
-          :hide_constants, :hide_methods, :exceptions
+          :hide_constants, :hide_methods, :hide_arguments, :exceptions
 
       def except?(mod)
         @exceptions.each do |cls|
@@ -929,6 +933,10 @@ module RDot
     opts.on("-C","--hide-constants",TrueClass,
         "Hide all constants.") do
       @hide_constants = true
+    end
+    opts.on '-A', '--hide-arguments', TrueClass,
+        'Hide method arguments.' do
+      @hide_arguments = true
     end
     opts.on("-e","--except","=[LIST]",Array,
         "Except classes (with children) from",
