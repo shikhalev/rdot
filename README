@@ -6,7 +6,9 @@ Author: Ivan Shikhalev <shikhalev@gmail.com>
 License: GNU General Public License, see COPYING
 	http://www.gnu.org/licenses/gpl.html
 
-Usage: rdot [options]
+Usage: rdot [options] <libs>
+
+Options:
     -h, --help                       Show short help and exit.
     -I, --info=[INFO]                Show some program information and exit.
                                      Argument may by comma-separated set of:
@@ -63,10 +65,13 @@ Usage: rdot [options]
                                      Ruby classes.
     -M, --hide-methods               Hide all methods from diagram.
     -C, --hide-constants             Hide all constants.
+    -A, --hide-arguments             Hide method arguments.
     -e, --except=[LIST]              Except classes (with children) from
                                      processing. If no classes specified,
                                      the Exception will excepted.
 
+Note:
+	Use `RUBYOPT="" rdot smth' if yor have RubyGems installed.
 
 Samples:
 	see at http://github.com/shikhalev/rdot/downloads

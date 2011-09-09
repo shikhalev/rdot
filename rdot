@@ -1,13 +1,5 @@
 #!/usr/bin/ruby -Ku
 
-def xsub a, b
-  if b > a
-    0
-  else
-    a - b
-  end
-end
-
 class String
   def escape
     result = ""
@@ -119,8 +111,8 @@ module RDot
           text = @files[file]
           # make header
           header = ""
-          scan_re = Regexp.compile "^\\s*def\\s+(?:\\w+\\.)?#{Regexp.escape(object.name)}"
-          alias_re = Regexp.compile "^\\s*alias(?:_method)?\\s+(?:\\w+\\.)?:?#{Regexp.escape(object.name)}\\s*,?\\s+:?([^\\s]*)\\s*"
+          scan_re = Regexp.compile "^(?:.*?;)?\\s*(?:def\\s+(?:\\w+\\.)?#{Regexp.escape(object.name)}|module_function)"
+          alias_re = Regexp.compile "^(?:.*?;)?\\s*alias(?:_method)?\\s+(?:\\w+\\.)?:?#{Regexp.escape(object.name)}\\s*,?\\s+:?([^\\s]*)\\s.*"
           current_ln = line - 1
           begin
             current_txt = text[current_ln].gsub /#.*$/, ''
@@ -133,9 +125,12 @@ module RDot
             current_ln -= 1
           end until current_ln <= 0 || scan_re === current_txt
           header.gsub! /\s+/m, ' '
-          brace_re = Regexp.compile ".*?\\s*def\\s+(?:\\w+\\.)?(#{Regexp.escape(object.name)}\\((?:[^\\(\\)]+|\\([^\\(\\)]+\\))*?\\)).*"
-          nonbrace_re = Regexp.compile ".*?\\s*def\\s+(?:\\w+\\.)?(#{Regexp.escape(object.name)}.*$)"
-          if brace_re === header
+          brace_re = Regexp.compile ".*?\\s*def\\s+(?:\\w+\\.)?(#{Regexp.escape(object.name)}\\s*\\((?:[^\\(\\)]+|\\([^\\(\\)]+\\))*?\\)).*"
+          nonbrace_re = Regexp.compile ".*?\\s*def\\s+(?:\\w+\\.)?(#{Regexp.escape(object.name)}.*?)(?:$|;.*)"
+          mf_re = Regexp.compile ".*?module_function\\s+.*?(#{Regexp.escape(object.name)}).*"
+          if mf_re === header
+            :module_function
+          elsif brace_re === header
             header.gsub(brace_re, '\1')
           else
             header.gsub(nonbrace_re, '\1')
@@ -221,8 +216,7 @@ module RDot
         @modules[mod][scope][:attributes][symbol][:evaluated] = true
       end
       if @modules[mod][scope][:attributes][symbol][accessor] != object
-        @modules[mod][scope][:attributes][symbol][:preloaded] =
-            preloaded
+        @modules[mod][scope][:attributes][symbol][:preloaded] = preloaded
       end
       @modules[mod][scope][:attributes][symbol][accessor] = object
     end
@@ -258,11 +252,12 @@ module RDot
             @modules[mod][scope][access][symbol][:evaluated] = true
           end
           if @modules[mod][scope][access][symbol][:object] != object
-            @modules[mod][scope][access][symbol][:preloaded] =
-                preloaded
+            @modules[mod][scope][access][symbol][:preloaded] = preloaded
           end
-          @modules[mod][scope][access][symbol][:header] =
-              method_header(object,hash)
+          @modules[mod][scope][access][symbol][:header] = method_header(object,hash)
+#          if @modules[mod][scope][access][symbol][:header] == :module_function
+#            @modules[mod][scope][access][symbol][:header] = @modules[mod][:instance][:private][symbol][:header]
+#          end
           @modules[mod][scope][access][symbol][:source] = source
           @modules[mod][scope][access][symbol][:object] = object
         end
@@ -353,10 +348,7 @@ module RDot
     end
 
     def module_preloaded?(mod)
-      if @immediates == nil
-	return false
-      end
-      if @immediates.include? mod
+      if @immediates != nil && @immediates.include?(mod)
         return false
       end
       [:class, :instance].each do |scope|
@@ -552,12 +544,16 @@ module RDot
                   @modules[mod][scope][access].sort.each do |value|
                     if RDot::Options.show_preloaded ||
                         ! value[1][:preloaded]
+                      header = value[1][:header]
+                      if header == :module_function
+                        header = @modules[mod][:instance][:private][value[0]][:header]
+                      end
                       if ! value[1][:preloaded]
-                        tds << "<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\">#{value[1][:header].escape}</TD>"+
+                        tds << "<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\">#{header.escape}</TD>"+
                             "<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\">#{value[1][:file]}</TD>"+
                             "<TD ALIGN=\"RIGHT\" BGCOLOR=\"#{access_color(access)}\">#{value[1][:line]}</TD>"
                       else
-                        tds << "<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{value[1][:header].escape}</FONT></TD>"+
+                        tds << "<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{header.escape}</FONT></TD>"+
                             "<TD ALIGN=\"LEFT\" BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{value[1][:file]}</FONT></TD>"+
                             "<TD ALIGN=\"RIGHT\" BGCOLOR=\"#{access_color(access)}\"><FONT COLOR=\"#666666\">#{nn(value[1][:line])}</FONT></TD>"
                       end
@@ -665,9 +661,11 @@ module RDot
   if $stdout.stat.chardev?
     TITLE = "\e[1mRDot v#{RDot::VERSION}\e[0m - GraphViz class diagrams" +
         " for Ruby\n\thttp://github.com/shikhalev/rdot/"
+    USAGE = "\e[1mUsage:\e[0m rdot [options] <libs>\n\n\e[1mOptions:\e[0m\n"
   else
     TITLE = "RDot v#{RDot::VERSION} - GraphViz class diagrams for Ruby\n" +
         "\thttp://github.com/shikhalev/rdot/"
+    USAGE = "Usage: rdot [options] <libs>\n\nOptions:\n"
   end
   AUTHOR = "Ivan Shikhalev <shikhalev@gmail.com>\n" +
       "\thttp://github.com/shikhalev/"
@@ -744,7 +742,7 @@ module RDot
 
   module Options
 
-    opts = OptionParser.new
+    opts = OptionParser.new RDot::USAGE
     opts.on("-h","--help",
         "Show short help and exit.") do
       puts "#{RDot::TITLE}\n\n#{opts.to_s}"
@@ -780,13 +778,21 @@ module RDot
           end
         when "author"
           if arg.size > 1
-            puts "Author: #{RDot::AUTHOR}"
+            if $stdout.stat.chardev?
+              puts "\e[1mAuthor:\e[0m #{RDot::AUTHOR}"
+            else
+              puts "Author: #{RDot::AUTHOR}"
+            end
           else
             puts "#{RDot::AUTHOR}"
           end
         when "license"
           if arg.size > 1
-            puts "License: #{RDot::LICENSE}"
+            if $stdout.stat.chardev?
+              puts "\e[1mLicense:\e[0m #{RDot::LICENSE}"
+            else
+              puts "License: #{RDot::LICENSE}"
+            end
           else
             puts "#{RDot::LICENSE}"
           end
@@ -798,7 +804,11 @@ module RDot
         when "version"
           if ! arg.include? "about"
             if arg.size > 1
-              puts "Version: #{RDot::VERSION}"
+              if $stdout.stat.chardev?
+                puts "\e[1mVersion:\e[0m #{RDot::VERSION}"
+              else
+                puts "Version: #{RDot::VERSION}"
+              end
             else
               puts "#{RDot::VERSION}"
             end
@@ -956,7 +966,13 @@ module RDot
         end
       end
     end
-    opts.on
+    opts.separator ''
+    if $stdout.stat.chardev?
+      opts.separator "\e[1mNote:\e[0m"
+    else
+      opts.separator 'Note:'
+    end
+    opts.separator "\tUse `RUBYOPT=\"\" rdot smth' if yor have RubyGems installed."
     rest = opts.parse(ARGV)
     rest.each do |arg|
       list = arg.split(",")
@@ -991,5 +1007,4 @@ set_trace_func nil
 RDot.scan_modules(false)
 
 RDot.out_modules
-
 
