@@ -507,7 +507,7 @@ module RDot
                 if ! value[1][:preloaded]
                   tds << "<TD ALIGN=\"LEFT\" COLSPAN=\"3\">#{value[0]} &lt;#{value[1][:value].class.inspect.escape}&gt;</TD>"
                 else
-                  tds << "<TD ALIGN=\"LEFT\" COLSPAN=\"3\"><FONT COLOR=\"#666666\">#{value[0]} &lt;#{value[1][:value]}&gt;</FONT></TD>"
+                  tds << "<TD ALIGN=\"LEFT\" COLSPAN=\"3\"><FONT COLOR=\"#666666\">#{value[0].to_s.escape} &lt;#{value[1][:value].to_s.escape}&gt;</FONT></TD>"
                 end
               end
             end
@@ -529,7 +529,7 @@ module RDot
                           "<TD ALIGN=\"LEFT\">#{value[1][:file]}</TD>"+
                           "<TD ALIGN=\"RIGHT\">#{value[1][:line]}</TD>"
                     else
-                      tds << "<TD> ALIGN=\"LEFT\"<FONT COLOR=\"#666666\">#{attr_header(value)}</FONT></TD>"+
+                      tds << "<TD> ALIGN=\"LEFT\"<FONT COLOR=\"#666666\">#{attr_header(value).escape}</FONT></TD>"+
                           "<TD ALIGN=\"LEFT\"><FONT COLOR=\"#666666\">#{value[1][:file]}</FONT></TD>"+
                           "<TD ALIGN=\"RIGHT\"><FONT COLOR=\"#666666\">#{nn(value[1][:line])}</FONT></TD>"
                     end
@@ -657,7 +657,7 @@ end
 
 module RDot
 
-  VERSION = "0.9.2"
+  VERSION = "0.9.3"
   if $stdout.stat.chardev?
     TITLE = "\e[1mRDot v#{RDot::VERSION}\e[0m - GraphViz class diagrams" +
         " for Ruby\n\thttp://github.com/shikhalev/rdot/"
