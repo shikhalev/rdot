@@ -39,6 +39,8 @@ Options:
     -o, --output=[FILE]              Send output to file instead stdout.
                                      'rdot.dot' if no argument specified.
     -t, --title=TITLE                Set graph title.
+    -f, --font=NAME                  Set font name.
+    -F, --caption-font=NAME          Set caption fontname.
         --color-class=COLOR          Set class-node color. See:
                                      http://graphviz.org/doc/info/colors.html
         --color-class-preloaded=COLOR

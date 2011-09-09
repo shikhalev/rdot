@@ -255,9 +255,6 @@ module RDot
             @modules[mod][scope][access][symbol][:preloaded] = preloaded
           end
           @modules[mod][scope][access][symbol][:header] = method_header(object,hash)
-#          if @modules[mod][scope][access][symbol][:header] == :module_function
-#            @modules[mod][scope][access][symbol][:header] = @modules[mod][:instance][:private][symbol][:header]
-#          end
           @modules[mod][scope][access][symbol][:source] = source
           @modules[mod][scope][access][symbol][:object] = object
         end
@@ -636,11 +633,11 @@ module RDot
     def out_modules
       RDot::Options.output << "digraph graph_RDot{\n"
       RDot::Options.output << "\tgraph[rankdir=LR,\n\t\tsplines=true,\n"+
-          "\t\tfontname=\"Droid Sans\",\n"+
+          "\t\tfontname=\"#{RDot::Options.caption_fontname}\",\n"+
           "\t\tfontsize=24,\n\t\tlabelloc=t,\n"+
           "\t\tlabel=#{graph_label}\n\t];\n"
       RDot::Options.output << "\tnode[shape=plaintext,\n"+
-          "\t\tfontname=\"Droid Sans Mono\",\n\t\tfontsize=9\n\t];\n"
+          "\t\tfontname=\"#{RDot::Options.fontname}\",\n\t\tfontsize=9\n\t];\n"
       RDot::Options.output << "\tedge[dir=back,\n\t\tarrowtail=vee\n\t];\n"
       RDot::Options.output << "\n"
       ObjectSpace.each_object Module do |mod|
@@ -678,6 +675,8 @@ module RDot
     @excludes = []
     @includes = []
     @title = nil
+    @fontname = 'Monospace'
+    @caption_fontname = 'Sans-Serif'
     @color_class = "mediumaquamarine"
     @color_class_preloaded = "mediumseagreen"
     @color_class_evaluated = "aquamarine"
@@ -699,7 +698,9 @@ module RDot
     @hide_arguments = false
     @exceptions = []
     class << self
-      attr_reader :output, :includes, :excludes, :title, :color_class,
+      attr_reader :output, :includes, :excludes, :title,
+          :fontname, :caption_fontname,
+          :color_class,
           :color_class_preloaded, :color_class_evaluated,
           :color_exception, :color_exception_preloaded,
           :color_exception_evaluated, :color_module,
@@ -867,6 +868,12 @@ module RDot
     opts.on("-t","--title","=TITLE",String,
         "Set graph title.") do |arg|
       @title = arg
+    end
+    opts.on '-f', '--font', '=NAME', String, 'Set font name.' do |arg|
+      @fontname = arg
+    end
+    opts.on '-F', '--caption-font', '=NAME', String, 'Set caption fontname.' do |arg|
+      @caption_fontname = arg
     end
     opts.on("--color-class","=COLOR",String,
         "Set class-node color. See:",
