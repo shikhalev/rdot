@@ -696,6 +696,7 @@ module RDot
     @hide_methods = false
     @hide_constants = false
     @hide_arguments = false
+    @no_trace = false
     @exceptions = []
     class << self
       attr_reader :output, :includes, :excludes, :title,
@@ -707,7 +708,8 @@ module RDot
           :color_module_preloaded, :color_inherited, :color_included,
           :color_extended, :color_protected, :color_private,
           :show_protected, :show_private, :show_preloaded,
-          :hide_constants, :hide_methods, :hide_arguments, :exceptions
+          :hide_constants, :hide_methods, :hide_arguments, :no_trace,
+          :exceptions
 
       def except?(mod)
         @exceptions.each do |cls|
@@ -955,6 +957,10 @@ module RDot
         'Hide method arguments.' do
       @hide_arguments = true
     end
+    opts.on '-r', '--no-trace', TrueClass, 'Don\'t use trace func.',
+        'Use this if vizualized library make', 'tracing itself.' do
+      @no_trace = true
+    end
     opts.on("-e","--except","=[LIST]",Array,
         "Except classes (with children) from",
             "processing. If no classes specified,",
@@ -1003,13 +1009,13 @@ trace_func = Proc.new do |event, file, line, id, binding, classname|
     RDot.register_immediate(binding.eval("self"))
   end
 end
-set_trace_func trace_func
+set_trace_func trace_func if ! RDot::Options.no_trace
 
 RDot::Options.includes.each do |lib|
   require lib
 end
 
-set_trace_func nil
+set_trace_func nil if ! RDot::Options.no_trace
 
 RDot.scan_modules(false)
 
