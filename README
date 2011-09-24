@@ -68,6 +68,9 @@ Options:
     -M, --hide-methods               Hide all methods from diagram.
     -C, --hide-constants             Hide all constants.
     -A, --hide-arguments             Hide method arguments.
+    -r, --no-trace                   Don't use trace func.
+                                     Use this if vizualized library make
+                                     tracing itself.
     -e, --except=[LIST]              Except classes (with children) from
                                      processing. If no classes specified,
                                      the Exception will excepted.
