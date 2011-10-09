@@ -74,6 +74,7 @@ Options:
     -e, --except=[LIST]              Except classes (with children) from
                                      processing. If no classes specified,
                                      the Exception will excepted.
+    -v, --verbose=[LEVEL]            Verbosity level.
 
 Note:
 	Use `RUBYOPT="" rdot smth' if yor have RubyGems installed.
