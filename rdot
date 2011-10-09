@@ -45,10 +45,10 @@ module RDot
     attr_reader :sources
 
     def register_source(mod,scope,symbol,source)
-      if RDot::Options.verbose == :all
-        $stderr << "register source: #{mod}::#{symbol}\n"
-      end
       if Array === source && source.size != 0
+        if RDot::Options.verbose != :none
+          $stderr << "register source: #{mod}::#{symbol} => #{source[0]}\n"
+        end
         if @sources == nil
           @sources = {}
         end
@@ -71,7 +71,7 @@ module RDot
       end
     end
 
-    def source_hash(source)
+    def source_hash(source,attribute = false)
       if String === source && source.length != 0
         if /(eval)/ === source
           {:file => "(eval)", :line => nil}
@@ -79,7 +79,11 @@ module RDot
           {:file => "(forward)", :line => nil}
         else
           a = source.split(":")
-          {:file => a[0].strip, :line => a[1].to_i}
+          r = {:file => a[0].strip, :line => a[1].to_i}
+          if a.length > 2 && ! attribute
+            r[:file] = '(indirect) ' + r[:file]
+          end
+          r
         end
       else
         {:file => "(n/a)", :line => nil}
@@ -172,7 +176,7 @@ module RDot
     end
 
     def register_attribute(mod,scope,symbol,source,preloaded,object)
-      if RDot::Options.verbose == :all
+      if RDot::Options.verbose == :scan
         $stderr << "scan attribute: #{mod}::#{symbol}\n"
       end
       if @modules[mod][scope] == nil
@@ -213,7 +217,7 @@ module RDot
         access = {:read => true}
         accessor = :reader
       end
-      hash = source_hash(source)
+      hash = source_hash(source,true)
       if @modules[mod][scope][:attributes][symbol] == nil
         @modules[mod][scope][:attributes][symbol] = hash
       end
@@ -246,7 +250,7 @@ module RDot
           register_attribute mod, scope, symbol, source, preloaded,
               object
         else
-          if RDot::Options.verbose == :all
+          if RDot::Options.verbose == :scan
             $stderr << "scan method: #{mod}::#{symbol}\n"
           end
           if @modules[mod][scope] == nil
@@ -284,7 +288,7 @@ module RDot
               end
             end
           end
-          if RDot::Options.verbose == :all
+          if RDot::Options.verbose == :scan
             $stderr << "scan const: #{mod}::#{const}\n"
           end
           if @modules[mod][:constants] == nil
@@ -305,7 +309,7 @@ module RDot
     end
 
     def register_module(mod,preloaded)
-      if RDot::Options.verbose != :none
+      if RDot::Options.verbose == :scan
         $stderr << "scan module: #{mod}\n"
       end
       if @modules == nil
@@ -1002,10 +1006,10 @@ module RDot
       case value
       when '0', 'none'
         @verbose = :none
-      when nil, '1', 'module'
-        @verbose = :module
-      when '2', 'all'
-        @verbose = :all
+      when nil, '1', 'register'
+        @verbose = :register
+      when '2', 'scan'
+        @verbose = :scan
       end
     end
     opts.separator ''
