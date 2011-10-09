@@ -75,6 +75,7 @@ Options:
                                      processing. If no classes specified,
                                      the Exception will excepted.
     -v, --verbose=[LEVEL]            Verbosity level.
+                                     none (0) or register (1) or scan (2).
 
 Note:
 	Use `RUBYOPT="" rdot smth' if yor have RubyGems installed.

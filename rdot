@@ -1002,7 +1002,8 @@ module RDot
         end
       end
     end
-    opts.on '-v', '--verbose', '=[LEVEL]', String, 'Verbosity level.' do |value|
+    opts.on '-v', '--verbose', '=[LEVEL]', String, 'Verbosity level.',
+        'none (0) or register (1) or scan (2).' do |value|
       case value
       when '0', 'none'
         @verbose = :none
