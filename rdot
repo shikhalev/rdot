@@ -45,6 +45,9 @@ module RDot
     attr_reader :sources
 
     def register_source(mod,scope,symbol,source)
+      if RDot::Options.verbose == :all
+        $stderr << "register source: #{mod}::#{symbol}\n"
+      end
       if Array === source && source.size != 0
         if @sources == nil
           @sources = {}
@@ -144,6 +147,9 @@ module RDot
     attr_reader :immediates
 
     def register_immediate(mod)
+      if RDot::Options.verbose != :none
+        $stderr << "register module: #{mod}\n"
+      end
       if @immediates == nil
         @immediates = []
       end
@@ -166,6 +172,9 @@ module RDot
     end
 
     def register_attribute(mod,scope,symbol,source,preloaded,object)
+      if RDot::Options.verbose == :all
+        $stderr << "scan attribute: #{mod}::#{symbol}\n"
+      end
       if @modules[mod][scope] == nil
         @modules[mod][scope] = {}
       end
@@ -237,6 +246,9 @@ module RDot
           register_attribute mod, scope, symbol, source, preloaded,
               object
         else
+          if RDot::Options.verbose == :all
+            $stderr << "scan method: #{mod}::#{symbol}\n"
+          end
           if @modules[mod][scope] == nil
             @modules[mod][scope] = {}
           end
@@ -272,6 +284,9 @@ module RDot
               end
             end
           end
+          if RDot::Options.verbose == :all
+            $stderr << "scan const: #{mod}::#{const}\n"
+          end
           if @modules[mod][:constants] == nil
             @modules[mod][:constants] = {}
           end
@@ -290,6 +305,9 @@ module RDot
     end
 
     def register_module(mod,preloaded)
+      if RDot::Options.verbose != :none
+        $stderr << "scan module: #{mod}\n"
+      end
       if @modules == nil
         @modules = {}
       end
@@ -698,6 +716,7 @@ module RDot
     @hide_arguments = false
     @no_trace = false
     @exceptions = []
+    @verbose = :none
     class << self
       attr_reader :output, :includes, :excludes, :title,
           :fontname, :caption_fontname,
@@ -709,7 +728,7 @@ module RDot
           :color_extended, :color_protected, :color_private,
           :show_protected, :show_private, :show_preloaded,
           :hide_constants, :hide_methods, :hide_arguments, :no_trace,
-          :exceptions
+          :exceptions, :verbose
 
       def except?(mod)
         @exceptions.each do |cls|
@@ -977,6 +996,16 @@ module RDot
           rescue Exception
           end
         end
+      end
+    end
+    opts.on '-v', '--verbose', '=[LEVEL]', String, 'Verbosity level.' do |value|
+      case value
+      when '0', 'none'
+        @verbose = :none
+      when nil, '1', 'module'
+        @verbose = :module
+      when '2', 'all'
+        @verbose = :all
       end
     end
     opts.separator ''
