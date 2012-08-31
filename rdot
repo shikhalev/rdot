@@ -96,7 +96,7 @@ module RDot
       else
         args = []
         (0..arity.abs-1).each do |iarg|
-          args << ("a"[0]+iarg).chr
+          args << ("a".getbyte(0)+iarg).chr
         end
         if arity < 0
           args[arity.abs-1] = "*#{args[arity.abs-1]}"
