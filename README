@@ -28,7 +28,7 @@ Options:
     -L, --license                    Show license information and exit.
     -?, --usage                      Show command line arguments and exit.
     -V, --version                    Show version and exit.
-    -x, -p, --exclude=LIBS           Comma-separated list of libraries
+    -x, -p, --excludeLIBS,           Comma-separated list of libraries
         --preload                    which must be excluded from output graph.
                                      This libs will be preloaded before start
                                      registering any changes like standard
@@ -36,6 +36,8 @@ Options:
     -i, --include, --input=LIBS      Comma-separated list of libraries for
                                      processing. Also libs may be specified
                                      in command line without any key.
+    -l, --libs=PATH                  Comma-separated list of directories for
+                                     search required libraries.
     -o, --output=[FILE]              Send output to file instead stdout.
                                      'rdot.dot' if no argument specified.
     -t, --title=TITLE                Set graph title.

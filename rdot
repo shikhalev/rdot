@@ -1,5 +1,7 @@
 #!/usr/bin/ruby -Ku
 
+$: << '.'
+
 class String
   def escape
     result = ""
@@ -881,6 +883,13 @@ module RDot
         "processing. Also libs may be specified",
         "in command line without any key.") do |arg|
       @includes += arg
+    end
+    opts.on '-l', '--libs', '=PATH', Array,
+        'Comma-separated list of directories for',
+        'search required libraries.' do |arg|
+      arg.each do |item|
+        $: << item
+      end
     end
     opts.on("-o","--output","=[FILE]",String,
         "Send output to file instead stdout.",
