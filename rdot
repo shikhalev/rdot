@@ -678,7 +678,7 @@ end
 
 module RDot
 
-  VERSION = "0.9.4"
+  VERSION = "0.9.6"
   if $stdout.stat.chardev?
     TITLE = "\e[1mRDot v#{RDot::VERSION}\e[0m - GraphViz class diagrams" +
         " for Ruby\n\thttp://github.com/shikhalev/rdot/"
