@@ -9,10 +9,54 @@ module RDot
   class Method
 
     attr_reader :ruby
+    attr_reader :owner
+    attr_reader :name
+    attr_reader :signature
+    attr_reader :source
+    attr_reader :file
+    attr_reader :line
 
     def initialize owner, ruby, opts = {}
       @owner = owner
+      @opts = opts
       @ruby = ruby
+      @name = ruby.name
+      @source = ruby.source_location
+      if @source
+        @file = @source[0]
+        $:.sort.reverse.each do |path|
+          l = path.length
+          if @file[0...l] == path
+            @file = @file[l..-1]
+            break
+          end
+        end
+        @line = @source[1]
+      end
+      @signature = @name
+      if ! @opts[:hide_arguments]
+        letter = 'a'
+        first = true
+        ruby.parameters.each do |par|
+          if par.size == 1
+            n = letter
+            letter = letter.succ
+          else
+            n = par[1]
+          end
+          case par[0]
+          when :req
+            @signature += "#{first && ' ' || ', '}#{n}"
+          when :opt
+            @signature += "#{first && ' [' || '[, '}#{n}]"
+          when :rest
+            @signature += "#{first && ' *' || ', *'}#{n}"
+          when :block
+            @signature += "#{first && ' &' || ', &'}#{n}"
+          end
+          first = nil
+        end
+      end
     end
 
   end
@@ -121,6 +165,27 @@ module RDot
       end
       @instance_private_methods.each do |n, m|
         result.add_method m if other[n].ruby != m.ruby
+      end
+      @class_public_methods.each do |n, m|
+        result.add_method m if other[n].ruby != m.ruby
+      end
+      @class_protected_methods.each do |n, m|
+        result.add_method m if other[n].ruby != m.ruby
+      end
+      @class_private_methods.each do |n, m|
+        result.add_method m if other[n].ruby != m.ruby
+      end
+      @constants.each do |n, c|
+        result.add_constant n, c if other[n] != c
+      end
+      if @instance_public_methods.empty? &&
+          @instance_protected_methods.empty? &&
+          @instance_private_methods.empty? && @class_public_methods.empty? &&
+          @class_protected_methods.empty? && @class_private_methods.empty? &&
+          @constants.empty?
+        nil
+      else
+        result
       end
     end
 
