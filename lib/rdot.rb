@@ -42,22 +42,22 @@ class Module
   end
 
   def attr *names
-    RDot.attr_register *module_scope, [:r, parse_caller(caller)], names
+    RDot.attr_register *module_scope, names, [:r], parse_caller(caller)
     old_attr *names
   end
 
   def attr_reader *names
-    RDot.attr_register *module_scope, [:r, parse_caller(caller)], names
+    RDot.attr_register *module_scope, names, [:r], parse_caller(caller)
     old_attr_reader *names
   end
 
   def attr_writer *names
-    RDot.attr_register *module_scope, [:w, parse_caller(caller)], names
+    RDot.attr_register *module_scope, names, [:w], parse_caller(caller)
     old_attr_writer *names
   end
 
   def attr_accessor *names
-    RDot.attr_register *module_scope, [:r, :w, parse_caller(caller)], names
+    RDot.attr_register *module_scope, names, [:r, :w], parse_caller(caller)
     old_attr_accessor *names
   end
 
@@ -65,7 +65,24 @@ end
 
 $module_hook_end = __LINE__
 
-pp [$module_hook_start, $module_hook_end]
+class Object
+
+  def echo *args
+    args.each do |a|
+      self << a
+    end
+    self << "\n"
+  end
+
+end
+
+class String
+
+  def escape
+    gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;')
+  end
+
+end
 
 module RDot
 
@@ -78,13 +95,32 @@ module RDot
       @@attr_list
     end
 
-    def attr_register mod, scope, access, names
+    def attr_register mod, scope, names, access, source
       @@attr_list ||= {}
       @@attr_list[mod] ||= {}
       @@attr_list[mod][scope] ||= {}
       names.each do |name|
-        @@attr_list[mod][scope][name] = access
+        @@attr_list[mod][scope][name] = { :access => access, :source => source }
       end
+    end
+
+    def processed
+      @@processed ||= []
+      @@processed
+    end
+
+    def processed_push value
+      @@processed ||= []
+      @@processed.push value
+    end
+
+    def processed? value
+      @@processed ||= []
+      @@processed.include? value
+    end
+
+    def processed_reset
+      @@processed = []
     end
 
   end
@@ -107,11 +143,14 @@ module RDot
       @scope = opts[:scope] || :instance
       @source = ruby.source_location
       if @source
-        #pp [@name, @source, __FILE__]
-      if @source[0] == __FILE__ &&
+        if @source[0] == __FILE__ &&
           ($module_hook_start..$module_hook_end).include?(@source[1])
-        #pp [@name, owner.name, @source]
-      end
+          if RDot.attr_list && RDot.attr_list[ruby.owner] &&
+              RDot.attr_list[ruby.owner][@scope] &&
+              RDot.attr_list[ruby.owner][@scope][@name]
+            @source = RDot.attr_list[ruby.owner][@scope][@name][:source]
+          end
+        end
         @file = @source[0]
         $:.sort.reverse.each do |path|
           l = path.length
@@ -137,7 +176,7 @@ module RDot
           when :req
             @signature += "#{first && ' ' || ', '}#{n}"
           when :opt
-            @signature += "#{first && ' [' || '[, '}#{n}]"
+            @signature += "#{first && ' [' || ' [, '}#{n}]"
           when :rest
             @signature += "#{first && ' *' || ', *'}#{n}"
           when :block
@@ -154,7 +193,7 @@ module RDot
 
     include Comparable
 
-    attr_reader :name
+    attr_reader :name, :module
 
     def initialize mod, opts = {}
       @opts = opts
@@ -167,6 +206,8 @@ module RDot
       @class_protected_methods = {}
       @class_private_methods = {}
       @constants = {}
+      @kind = Class === mod && (mod <= Exception && :exception || :class) ||
+          :module
       if ! @opts[:no_init]
         if ! @opts[:hide_methods]
           mod.instance_methods(false).each do |m|
@@ -174,30 +215,30 @@ module RDot
             @instance_public_methods[m.name] = RDot::Method.new self, m, @opts
           end
           mod.methods(false).each do |m|
-            m = mod.method(m)
+            m = mod.method(m).unbind
             @class_public_methods[m.name] = RDot::Method.new self, m,
                 @opts.merge(:scope => :class)
           end
           if @opts[:show_protected]
             mod.instance_protected_methods(false) do |m|
-            m = mod.instance_method(m)
+              m = mod.instance_method(m)
               @instance_protected_methods[m.name] = RDot::Method.new self, m,
                   @opts.merge(:visibility => :protected)
             end
             mod.protected_methods(false).each do |m|
-            m = mod.method(m)
+              m = mod.method(m).unbind
               @class_protected_methods[m.name] = RDot::Method.new self, m,
                   @opts.merge(:visibility => :protected, :scope => :class)
             end
           end
           if @opts[:show_private]
             mod.instance_private_methods(false) do |m|
-            m = mod.instance_method(m)
+              m = mod.instance_method(m)
               @instance_private_methods[m.name] = RDot::Method.new self, m,
                   @opts.merge(:visibility => :private)
             end
             mod.private_methods(false).each do |m|
-            m = mod.method(m)
+              m = mod.method(m).unbind
               @class_private_methods[m.name] = RDot::Method.new self, m,
                   @opts.merge(:visibility => :private, :scope => :class)
             end
@@ -253,7 +294,8 @@ module RDot
       if other == nil
         return self
       end
-      result = RDot::Module.new @module, :no_init => true
+      result = RDot::Module.new @module, @opt.merge(:no_init => true,
+                                                    :preloaded => true)
       @instance_public_methods.each do |n, m|
         result.add_method m if other[n].ruby != m.ruby
       end
@@ -286,6 +328,69 @@ module RDot
       end
     end
 
+    def node_name
+      @module.inspect.tr '#<>() =,;:', '_'
+    end
+
+    def node_color
+      if @opts[:preloaded]
+        case @kind
+        when :exception
+          @opts[:color_exception_preloaded] || 'chocolate'
+        when :class
+          @opts[:color_class_preloaded] || 'mediumseagreen'
+        when :module
+          @opts[:color_module_preloaded] || 'steelblue'
+        end
+      else
+        case @kind
+        when :exception
+          @opts[:color_exception] || 'lightcoral'
+        when :class
+          @opts[:color_class] || 'mediumaquamarine'
+        when :module
+          @opts[:color_module] || 'skyblue'
+        end
+      end
+    end
+
+    def node_rows
+    end
+
+    def to_dot out = ''
+      if ! RDot.processed? self
+        RDot.processed_push self
+        out.echo '  ', node_name, '['
+        out.echo '    label=<'
+        out.echo '      <TABLE CELLBORDER="0" CELLSPACING="0">'
+        out.echo '        <TR>'
+        out.echo '          <TD ALIGN="RIGHT" BGCOLOR="', node_color, '">'
+        out.echo '           <FONT FACE="',
+            @opts[:name_fontname] || @opts[:fontname] || 'monospace',
+            '" POINT-SIZE="', @opts[:name_fontsize] || @opts[:fontsize] || 9,
+            '">'
+        out.echo '             ', @kind
+        out.echo '           </FONT>'
+        out.echo '          </TD>'
+        out.echo '          <TD COLSPAN="3" ALIGN="LEFT" BGCOLOR="', node_color,
+            '">'
+        out.echo '            <FONT FACE="',
+            @opts[:name_fontname] || @opts[:fontname] || 'monospace',
+            '" POINT-SIZE="', @opts[:name_fontsize] || @opts[:fontsize] || 9,
+            '">'
+        out.echo '              ', @module.inspect.escape
+        out.echo '            </FONT>'
+        out.echo '          </TD>'
+        out.echo '        </TR>'
+        out.echo node_rows
+        out.echo '      </TABLE>'
+        out.echo '    >'
+        out.echo '  ];'
+        
+      end
+    end
+
+    private :node_color, :node_name, :node_rows
     protected :add_method, :add_constant
 
   end
@@ -321,18 +426,18 @@ module RDot
             if @opts[:only_global]
               throw :module if !m.global?
             end
-            @modules[m.name] = RDot::Module.new m, @opts
+            @modules[m] = RDot::Module.new m, @opts
           end
         end
       end
     end
 
-    def [] name
-      @modules[name]
+    def [] mod
+      @modules[mod]
     end
 
-    def []= name, m
-      @modules[name] = m
+    def []= mod, m
+      @modules[mod] = m
     end
 
     def each &block
@@ -340,14 +445,49 @@ module RDot
     end
 
     def sub other
-      result = RDot::Space.new :no_init => true
+      result = RDot::Space.new @opts.merge(:no_init => true)
       @modules.each do |m|
-        sm = m.sub other[m.name]
-        result[m.name] = sm if sm
+        sm = m.sub other[m.module]
+        result[m.module] = sm if sm
       end
       result
     end
 
+    def title
+      return @opts[:title] if @opts[:title]
+      return 'RDot: ' + @opts[:includes].join(', ') if @opts[:includes]
+      'RDot Graph'
+    end
+
+    def to_dot out = ''
+      if ! out.respond_to?(:<<)
+        raise 'Invalid output.'
+      end
+      out.echo 'digraph graph_RDot{'
+      out.echo '  graph['
+      out.echo '    rankdir=LR,'
+      out.echo '    splines=true,'
+      out.echo '    fontname="', @opts[:caption_fontname] || 'sans-serif', '",'
+      out.echo '    fontsize=', @opts[:caption_fontsize] || 24, ','
+      out.echo '    labelloc=t,'
+      out.echo '    label="', title, '"'
+      out.echo '  ];'
+      out.echo '  node['
+      out.echo '    shape=plaintext,'
+      out.echo '    fontname="', @opts[:fontname] || 'monospace', '",'
+      out.echo '    fontsize=', @opts[:fontsize] || 9
+      out.echo '  ];'
+      out.echo '  edge[dir=back, arrowtail=vee];'
+      out.echo
+      RDot.processed_reset
+      @modules.each do |m|
+        m.to_dot out
+      end
+      out.echo
+      out.echo '}'
+    end
+
+    private :title
     protected :[]=
 
   end
