@@ -2,9 +2,92 @@
 
 require 'is/monkey/namespace'
 
+$module_hook_start = __LINE__
+
+class Module
+
+  def module_scope
+    m = self.inspect
+    if m[0...8] == '#<Class:'
+      s = m.rindex '>'
+      v = m[8...s]
+      begin
+        value = sandbox { eval v }
+        return [value, :class]
+      rescue
+        return [nil, nil]
+      end
+    else
+      return [self, :instance]
+    end
+  end
+
+  alias :old_attr :attr
+  alias :old_attr_reader :attr_reader
+  alias :old_attr_writer :attr_writer
+  alias :old_attr_accessor :attr_accessor
+
+  def parse_caller clr
+    clr.each do |s|
+      if s.include?('`<module:') || s.include?('`<class:') ||
+          s.include?("`singletonclass'")
+        a = s.split(':')
+        begin
+          return [a[0], a[1].to_i]
+        rescue
+        end
+      end
+    end
+    return nil
+  end
+
+  def attr *names
+    RDot.attr_register *module_scope, [:r, parse_caller(caller)], names
+    old_attr *names
+  end
+
+  def attr_reader *names
+    RDot.attr_register *module_scope, [:r, parse_caller(caller)], names
+    old_attr_reader *names
+  end
+
+  def attr_writer *names
+    RDot.attr_register *module_scope, [:w, parse_caller(caller)], names
+    old_attr_writer *names
+  end
+
+  def attr_accessor *names
+    RDot.attr_register *module_scope, [:r, :w, parse_caller(caller)], names
+    old_attr_accessor *names
+  end
+
+end
+
+$module_hook_end = __LINE__
+
+pp [$module_hook_start, $module_hook_end]
+
 module RDot
 
-  VERSION = '0.99.0'
+  VERSION = '0.10.0'
+
+  class << self
+
+    def attr_list
+      @@attr_list ||= {}
+      @@attr_list
+    end
+
+    def attr_register mod, scope, access, names
+      @@attr_list ||= {}
+      @@attr_list[mod] ||= {}
+      @@attr_list[mod][scope] ||= {}
+      names.each do |name|
+        @@attr_list[mod][scope][name] = access
+      end
+    end
+
+  end
 
   class Method
 
@@ -21,8 +104,14 @@ module RDot
       @opts = opts
       @ruby = ruby
       @name = ruby.name
+      @scope = opts[:scope] || :instance
       @source = ruby.source_location
       if @source
+        #pp [@name, @source, __FILE__]
+      if @source[0] == __FILE__ &&
+          ($module_hook_start..$module_hook_end).include?(@source[1])
+        pp [@name, owner.name, @source]
+      end
         @file = @source[0]
         $:.sort.reverse.each do |path|
           l = path.length
@@ -33,7 +122,7 @@ module RDot
         end
         @line = @source[1]
       end
-      @signature = @name
+      @signature = @name.to_s
       if ! @opts[:hide_arguments]
         letter = 'a'
         first = true
@@ -77,31 +166,38 @@ module RDot
       @class_public_methods = {}
       @class_protected_methods = {}
       @class_private_methods = {}
+      @constants = {}
       if ! @opts[:no_init]
         if ! @opts[:hide_methods]
           mod.instance_methods(false).each do |m|
+            m = mod.instance_method(m)
             @instance_public_methods[m.name] = RDot::Method.new self, m, @opts
           end
           mod.methods(false).each do |m|
+            m = mod.method(m)
             @class_public_methods[m.name] = RDot::Method.new self, m,
                 @opts.merge(:scope => :class)
           end
           if @opts[:show_protected]
             mod.instance_protected_methods(false) do |m|
+            m = mod.instance_method(m)
               @instance_protected_methods[m.name] = RDot::Method.new self, m,
                   @opts.merge(:visibility => :protected)
             end
             mod.protected_methods(false).each do |m|
+            m = mod.method(m)
               @class_protected_methods[m.name] = RDot::Method.new self, m,
                   @opts.merge(:visibility => :protected, :scope => :class)
             end
           end
           if @opts[:show_private]
             mod.instance_private_methods(false) do |m|
+            m = mod.instance_method(m)
               @instance_private_methods[m.name] = RDot::Method.new self, m,
                   @opts.merge(:visibility => :private)
             end
             mod.private_methods(false).each do |m|
+            m = mod.method(m)
               @class_private_methods[m.name] = RDot::Method.new self, m,
                   @opts.merge(:visibility => :private, :scope => :class)
             end
