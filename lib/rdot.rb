@@ -110,7 +110,7 @@ module RDot
         #pp [@name, @source, __FILE__]
       if @source[0] == __FILE__ &&
           ($module_hook_start..$module_hook_end).include?(@source[1])
-        pp [@name, owner.name, @source]
+        #pp [@name, owner.name, @source]
       end
         @file = @source[0]
         $:.sort.reverse.each do |path|
@@ -205,6 +205,7 @@ module RDot
         end
         if ! @opts[:hide_constants]
           mod.constants(false).each do |c|
+            next if mod == Object && c == :Config
             @constants[c] = mod.const_get c
           end
         end
