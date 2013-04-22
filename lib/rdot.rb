@@ -79,7 +79,15 @@ end
 class String
 
   def escape
-    gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;')
+    gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;').gsub("\n", '\n')
+  end
+
+  def short max
+    if length > max
+      self[0..max-20] + ' ... ' + self[-15..-1]
+    else
+      self
+    end
   end
 
 end
@@ -166,6 +174,7 @@ module RDot
             break
           end
         end
+        @file = @file.escape
         @line = @source[1]
       end
       @signature = @name.to_s.escape
@@ -192,6 +201,10 @@ module RDot
           first = nil
         end
       end
+    end
+
+    def <=> other
+      @name <=> other.name
     end
 
   end
@@ -364,7 +377,7 @@ module RDot
     end
 
     def node_name
-      @module.inspect.tr '#<>() =,;:', '_'
+      "node_#{@module.inspect.tr('#<>() =,.;:', '_')}"
     end
 
     def node_color
@@ -393,7 +406,7 @@ module RDot
       result = ''
       if !(@opts[:hide_constants] || @constants.empty?)
         c = @constants.map do |n, v|
-          "#{n}\t&lt;#{v.class}: #{v.inspect.escape}&gt;".short(50)
+          "#{n} &lt;#{v.class}&gt;".short(50)
         end
         result += '<TR>' +
             '<TD ROWSPAN="' + c.size.to_s + '" VALIGN="TOP">const</TD>' +
@@ -409,21 +422,21 @@ module RDot
         protected_meths = []
         private_attrs = []
         private_meths = []
-        @class_public_methods.each do |m|
+        @class_public_methods.values.sort.each do |m|
           if @opts[:select_attributes] && m.attribute
             public_attrs << [m.attribute, m] unless public_attrs.include? m.attribute
           else
             public_meths << m
           end
         end
-        @class_protected_methods.each do |m|
+        @class_protected_methods.values.sort.each do |m|
           if @opts[:select_attributes] && m.attribute
             protected_attrs << [m.attribute, m] unless protected_attrs.include? m.attribute
           else
             protected_meths << m
           end
         end
-        @class_private_methods.each do |m|
+        @class_private_methods.values.sort.each do |m|
           if @opts[:select_attributes] && m.attribute
             private_attrs << [m.attribute, m] unless private_attrs.include? m.attribute
           else
@@ -473,21 +486,21 @@ module RDot
         protected_meths = []
         private_attrs = []
         private_meths = []
-        @instance_public_methods.each do |m|
+        @instance_public_methods.values.sort.each do |m|
           if @opts[:select_attributes] && m.attribute
             public_attrs << [m.attribute, m] unless public_attrs.include? m.attribute
           else
             public_meths << m
           end
         end
-        @instance_protected_methods.each do |m|
+        @instance_protected_methods.values.sort.each do |m|
           if @opts[:select_attributes] && m.attribute
             protected_attrs << [m.attribute, m] unless protected_attrs.include? m.attribute
           else
             protected_meths << m
           end
         end
-        @instance_private_methods.each do |m|
+        @instance_private_methods.values.sort.each do |m|
           if @opts[:select_attributes] && m.attribute
             private_attrs << [m.attribute, m] unless private_attrs.include? m.attribute
           else
@@ -589,7 +602,7 @@ module RDot
                                            :preloaded => true))
           nsm.to_dot out
           out.echo '  ', nsm.node_name, ' -> ', node_name,
-              '[color="', @opts[:color_nested] || 'silver', '", weight=100]'
+              '[color="', @opts[:color_nested] || '#AAAAAA', '", weight=100]'
         end
       end
     end
@@ -684,7 +697,7 @@ module RDot
       out.echo '  edge[dir=back, arrowtail=vee];'
       out.echo
       RDot.processed_reset
-      @modules.each do |m|
+      @modules.each do |_, m|
         m.to_dot out
       end
       out.echo
