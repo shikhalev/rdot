@@ -212,10 +212,14 @@ module RDot
               only_classes.each { |cls| throw :module if !(m <= cls) }
             end
             if (exclude_namespaces = @opts[:exclude_namespaces])
-              exclude_namespaces.each { |ns| throw :module if m.in? ns }
+              exclude_namespaces.each do |ns|
+                throw :module if m == ns || m.in?(ns)
+              end
             end
             if (only_namespaces = @opts[:only_namespaces])
-              only_namespaces.each { |ns| throw :module if ! m.in?(ns) }
+              only_namespaces.each do |ns|
+                throw :module if m != ns && ! m.in?(ns)
+              end
             end
             if @opts[:only_global]
               throw :module if !m.global?
