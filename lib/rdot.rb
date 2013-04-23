@@ -144,6 +144,14 @@ module RDot
     attr_reader :line
     attr_reader :attribute
 
+    def visibility
+      @opts[:visibility]
+    end
+
+    def scope
+      @opts[:scope]
+    end
+
     def initialize owner, ruby, opts = {}
       @owner = owner
       @opts = opts
@@ -217,7 +225,9 @@ module RDot
     attr_accessor :ancestors, :extensions
     attr_reader :instance_private_methods, :instance_protected_methods,
         :instance_public_methods, :class_private_methods,
-        :class_protected_methods, :class_public_methods
+        :class_protected_methods, :class_public_methods, :constants
+
+    attr_reader :opts
 
     def initialize space, mod, opts = {}
       @space = space
@@ -240,35 +250,36 @@ module RDot
         if ! @opts[:hide_methods]
           mod.instance_methods(false).each do |m|
             m = mod.instance_method(m)
+            next if m.owner != mod
             @instance_public_methods[m.name] = RDot::Method.new self, m, @opts
           end
           mod.methods(false).each do |m|
             m = mod.method(m).unbind
-            @class_public_methods[m.name] = RDot::Method.new self, m,
-                @opts.merge(:scope => :class)
+            next if m.owner != mod.singleton_class
+            @class_public_methods[m.name] = RDot::Method.new self, m, @opts.merge(:scope => :class)
           end
           if @opts[:show_protected]
             mod.instance_protected_methods(false) do |m|
               m = mod.instance_method(m)
-              @instance_protected_methods[m.name] = RDot::Method.new self, m,
-                  @opts.merge(:visibility => :protected)
+              next if m.owner != mod
+              @instance_protected_methods[m.name] = RDot::Method.new self, m, @opts.merge(:visibility => :protected)
             end
             mod.protected_methods(false).each do |m|
               m = mod.method(m).unbind
-              @class_protected_methods[m.name] = RDot::Method.new self, m,
-                  @opts.merge(:visibility => :protected, :scope => :class)
+              next if m.owner != mod.singleton_class
+              @class_protected_methods[m.name] = RDot::Method.new self, m, @opts.merge(:visibility => :protected, :scope => :class)
             end
           end
           if @opts[:show_private]
             mod.instance_private_methods(false) do |m|
               m = mod.instance_method(m)
-              @instance_private_methods[m.name] = RDot::Method.new self, m,
-                  @opts.merge(:visibility => :private)
+              next if m.owner != mod
+              @instance_private_methods[m.name] = RDot::Method.new self, m, @opts.merge(:visibility => :private)
             end
             mod.private_methods(false).each do |m|
               m = mod.method(m).unbind
-              @class_private_methods[m.name] = RDot::Method.new self, m,
-                  @opts.merge(:visibility => :private, :scope => :class)
+              next if m.owner != mod.singleton_class
+              @class_private_methods[m.name] = RDot::Method.new self, m, @opts.merge(:visibility => :private, :scope => :class)
             end
           end
         end
@@ -279,7 +290,7 @@ module RDot
           end
         end
         @ancestors = mod.ancestors - [mod]
-        @extensions = mod.singleton_class.ancestors - [mod.singleton_class]
+        @extensions = mod.singleton_class.ancestors - [mod.singleton_class, mod.class, ::Module, ::Class, ::Object, ::Kernel, ::BasicObject]
         if Class === mod && mod.superclass
           @ancestors -= [mod.superclass] + mod.superclass.ancestors
           @extensions -= [mod.superclass.singleton_class] +
@@ -335,30 +346,30 @@ module RDot
 
     def sub other
       if other == nil
+        $stderr.puts @name
         return self
       end
-      result = RDot::Module.new @space, @module,
-          @opt.merge(:no_init => true, :preloaded => true)
+      result = RDot::Module.new @space, @module, @opts.merge(:no_init => true, :preloaded => true)
       @instance_public_methods.each do |n, m|
-        result.add_method m if other[n].ruby != m.ruby
+        result.add_method(m) unless other[n] # && other[n].ruby == m.ruby
       end
       @instance_protected_methods.each do |n, m|
-        result.add_method m if other[n].ruby != m.ruby
+        result.add_method(m) unless other[n] # && other[n].ruby == m.ruby
       end
       @instance_private_methods.each do |n, m|
-        result.add_method m if other[n].ruby != m.ruby
+        result.add_method(m) unless other[n] # && other[n].ruby == m.ruby
       end
       @class_public_methods.each do |n, m|
-        result.add_method m if other[n].ruby != m.ruby
+        result.add_method(m) unless other[n] # && other[n].ruby == m.ruby
       end
       @class_protected_methods.each do |n, m|
-        result.add_method m if other[n].ruby != m.ruby
+        result.add_method(m) unless other[n] # && other[n].ruby == m.ruby
       end
       @class_private_methods.each do |n, m|
-        result.add_method m if other[n].ruby != m.ruby
+        result.add_method(m) unless other[n] # && other[n].ruby == m.ruby
       end
       @constants.each do |n, c|
-        result.add_constant n, c if other[n] != c
+        result.add_constant(n, c) unless other.constants[n] # != c
       end
       result.ancestors = @ancestors - other.ancestors
       result.extensions = @extensions - other.extensions
@@ -372,6 +383,8 @@ module RDot
           result.extensions.empty?
         nil
       else
+        $stderr.puts result.name
+        $stderr.puts result.class_public_methods.pretty_inspect
         result
       end
     end
@@ -409,8 +422,8 @@ module RDot
           "#{n} &lt;#{v.class}&gt;".short(50)
         end
         result += '<TR>' +
-            '<TD ROWSPAN="' + c.size.to_s + '" VALIGN="TOP">const</TD>' +
-            '<TD COLSPAN="3">' + c.join('</TD></TR><TR><TD COLSPAN="3">') +
+            '<TD ROWSPAN="' + c.size.to_s + '" VALIGN="TOP" ALIGN="RIGHT">const</TD>' +
+            '<TD COLSPAN="3" ALIGN="LEFT">' + c.join('</TD></TR><TR><TD COLSPAN="3" ALIGN="LEFT">') +
             '</TD></TR>'
       end
       if ! (@opts[:hide_methods] ||
@@ -446,35 +459,35 @@ module RDot
         rows = []
         rows += public_attrs.map do |a|
           acc = RDot.attr_list[@module][:class][a[0]][:access]
-          "<TD>#{a[0].to_s.escape} #{acc}</TD><TD>#{a[1].file}</TD><TD>#{a[1].line}</TD>"
+          "<TD ALIGN=\"LEFT\">#{a[0].to_s.escape} #{acc}</TD><TD>#{a[1].file}</TD><TD>#{a[1].line}</TD>"
         end
         rows += public_meths.map do |m|
-          "<TD>#{m.signature}</TD><TD>#{m.file}</TD><TD>#{m.line}</TD>"
+          "<TD ALIGN=\"LEFT\">#{m.signature}</TD><TD>#{m.file}</TD><TD>#{m.line}</TD>"
         end
         rows += protected_attrs.map do |a|
           acc = RDot.attr_list[@module][:class][a[0]][:access]
-          "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{a[0].to_s.escape} #{acc}</TD>" +
+          "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\" ALIGN=\"LEFT\">#{a[0].to_s.escape} #{acc}</TD>" +
               "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{a[1].file}</TD>" +
               "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{a[1].line}</TD>"
         end
         rows += protected_meths.map do |m|
-          "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{m.signature}</TD>" +
+          "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\" ALIGN=\"LEFT\">#{m.signature}</TD>" +
               "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{m.file}</TD>" +
               "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{m.line}</TD>"
         end
         rows += private_attrs.map do |a|
           acc = RDot.attr_list[@module][:class][a[0]][:access]
-          "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{a[0].to_s.escape} #{acc}</TD>" +
+          "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\" ALIGN=\"LEFT\">#{a[0].to_s.escape} #{acc}</TD>" +
               "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{a[1].file}</TD>" +
               "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{a[1].line}</TD>"
         end
         rows += private_meths.map do |m|
-          "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{m.signature}</TD>" +
+          "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\" ALIGN=\"LEFT\">#{m.signature}</TD>" +
               "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{m.file}</TD>" +
               "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{m.line}</TD>"
         end
         result += '<TR>' +
-            '<TD COLSPAN="' + rows.size.to_s + '" VALIGN="TOP">class</TD>' +
+            '<TD ROWSPAN="' + rows.size.to_s + '" VALIGN="TOP" ALIGN="RIGHT">class</TD>' +
             rows.join('</TR><TR>') + '</TR>'
       end
       if ! (@opts[:hide_methods] ||
@@ -510,35 +523,35 @@ module RDot
         rows = []
         rows += public_attrs.map do |a|
           acc = RDot.attr_list[@module][:instance][a[0]][:access]
-          "<TD>#{a[0].to_s.escape} #{acc}</TD><TD>#{a[1].file}</TD><TD>#{a[1].line}</TD>"
+          "<TD ALIGN=\"LEFT\">#{a[0].to_s.escape} #{acc}</TD><TD>#{a[1].file}</TD><TD>#{a[1].line}</TD>"
         end
         rows += public_meths.map do |m|
-          "<TD>#{m.signature}</TD><TD>#{m.file}</TD><TD>#{m.line}</TD>"
+          "<TD ALIGN=\"LEFT\">#{m.signature}</TD><TD>#{m.file}</TD><TD>#{m.line}</TD>"
         end
         rows += protected_attrs.map do |a|
           acc = RDot.attr_list[@module][:instance][a[0]][:access]
-          "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{a[0].to_s.escape} #{acc}</TD>" +
+          "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\" ALIGN=\"LEFT\">#{a[0].to_s.escape} #{acc}</TD>" +
               "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{a[1].file}</TD>" +
               "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{a[1].line}</TD>"
         end
         rows += protected_meths.map do |m|
-          "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{m.signature}</TD>" +
+          "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\" ALIGN=\"LEFT\">#{m.signature}</TD>" +
               "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{m.file}</TD>" +
               "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{m.line}</TD>"
         end
         rows += private_attrs.map do |a|
           acc = RDot.attr_list[@module][:instance][a[0]][:access]
-          "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{a[0].to_s.escape} #{acc}</TD>" +
+          "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\" ALIGN=\"LEFT\">#{a[0].to_s.escape} #{acc}</TD>" +
               "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{a[1].file}</TD>" +
               "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{a[1].line}</TD>"
         end
         rows += private_meths.map do |m|
-          "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{m.signature}</TD>" +
+          "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\" ALIGN=\"LEFT\">#{m.signature}</TD>" +
               "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{m.file}</TD>" +
               "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{m.line}</TD>"
         end
         result += '<TR>' +
-            '<TD COLSPAN="' + rows.size.to_s + '" VALIGN="TOP">instance</TD>' +
+            '<TD ROWSPAN="' + rows.size.to_s + '" VALIGN="TOP" ALIGN="RIGHT">instance</TD>' +
             rows.join('</TR><TR>') + '</TR>'
       end
       result
@@ -550,56 +563,39 @@ module RDot
         fname = @opts[:name_fontname] || @opts[:fontname] || 'monospace'
         fsize = @opts[:name_fontsize] || @opts[:fontsize] || 9
         out.echo '  ', node_name, '['
-        out.echo '    label=<'
-        out.echo '      <TABLE CELLBORDER="0" CELLSPACING="0">'
-        out.echo '       <TR>'
-        out.echo '        <TD ALIGN="RIGHT" BGCOLOR="', node_color, '">'
-        out.echo '         <FONT FACE="', fname, '" POINT-SIZE="', fsize, '">'
-        out.echo '          ', @kind
-        out.echo '         </FONT>'
-        out.echo '        </TD>'
-        out.echo '        <TD COLSPAN="3" ALIGN="LEFT" BGCOLOR="', node_color, '">'
-        out.echo '         <FONT FACE="', fname, '" POINT-SIZE="', fsize, '">'
-        out.echo '          ', @module.inspect.escape
-        out.echo '         </FONT>'
-        out.echo '        </TD>'
-        out.echo '       </TR>'
-        out.echo    node_rows
-        out.echo '      </TABLE>'
-        out.echo '    >'
+        out.echo '    label=<' + '<TABLE CELLBORDER="0" CELLSPACING="0">' +
+            '<TR>' + '<TD ALIGN="RIGHT" BGCOLOR="', node_color, '">' +
+            '<FONT FACE="', fname, '" POINT-SIZE="', fsize, '">' + @kind.to_s +
+            '</FONT>' + '</TD>' +
+            '<TD COLSPAN="3" ALIGN="LEFT" BGCOLOR="', node_color, '">' +
+            '<FONT FACE="', fname, '" POINT-SIZE="', fsize, '">' +
+            @module.inspect.escape + '</FONT>' + '</TD>' + '</TR>' + node_rows +
+            '</TABLE>' + '>'
         out.echo '  ];'
         if Class === @module && @module.superclass
           sup =  @space[@module.superclass] ||
-              RDot::Module.new(@space, @module.superclass,
-                               @opts.merge(:no_init => true,
-                                           :preloaded => true))
+              RDot::Module.new(@space, @module.superclass, @opts.merge(:no_init => true, :preloaded => true))
           sup.to_dot out
           out.echo '  ', sup.node_name, ' -> ', node_name, '[color="',
               @opts[:color_inherited] || 'steelblue', '", weight=1];'
         end
         @ancestors.each do |a|
           anc = @space[a] ||
-              RDot::Module.new(@space, a,
-                               @opts.merge(:no_init => true,
-                                           :preloaded => true))
+              RDot::Module.new(@space, a, @opts.merge(:no_init => true, :preloaded => true))
           anc.to_dot out
           out.echo '  ', anc.node_name, ' -> ', node_name,
               '[color="', @opts[:color_included] || 'skyblue', '", weight=10];'
         end
         @extensions.each do |e|
           ext = @space[e] ||
-              RDot::Module.new(@space, e,
-                               @opts.merge(:no_init => true,
-                                           :preloaded => true))
+              RDot::Module.new(@space, e, @opts.merge(:no_init => true, :preloaded => true))
           ext.to_dot out
           out.echo '  ', ext.node_name, ' -> ', node_name, '[color="',
               @opts[:color_extended] || 'olivedrab', '", weight=10];'
         end
         if (ns = @module.namespace)
           nsm = @space[ns] ||
-              RDot::Module.new(@space, ns,
-                               @opts.merge(:no_init => true,
-                                           :preloaded => true))
+              RDot::Module.new(@space, ns, @opts.merge(:no_init => true, :preloaded => true))
           nsm.to_dot out
           out.echo '  ', nsm.node_name, ' -> ', node_name,
               '[color="', @opts[:color_nested] || '#AAAAAA', '", weight=100]'
@@ -663,8 +659,10 @@ module RDot
 
     def sub other
       result = RDot::Space.new @opts.merge(:no_init => true)
-      @modules.each do |m|
+      $stderr.puts result.pretty_inspect
+      @modules.each do |_, m|
         sm = m.sub other[m.module]
+        $stderr.puts sm.name if sm
         result[m.module] = sm if sm
       end
       result
