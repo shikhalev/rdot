@@ -1,5 +1,6 @@
 # encoding: utf-8
 
+require 'is/monkey/sandbox'
 require 'is/monkey/namespace'
 
 $module_hook_start = __LINE__
@@ -22,10 +23,10 @@ class Module
     end
   end
 
-  alias :old_attr :attr
-  alias :old_attr_reader :attr_reader
-  alias :old_attr_writer :attr_writer
-  alias :old_attr_accessor :attr_accessor
+  alias :rdot_old_attr :attr
+  alias :rdot_old_attr_reader :attr_reader
+  alias :rdot_old_attr_writer :attr_writer
+  alias :rdot_old_attr_accessor :attr_accessor
 
   def parse_caller clr
     clr.each do |s|
@@ -42,24 +43,27 @@ class Module
   end
 
   def attr *names
-    RDot.attr_register *module_scope, names, '[r]', parse_caller(caller)
-    old_attr *names
+    RDot.register_attribute *module_scope, names, '[r]', parse_caller(caller)
+    rdot_old_attr *names
   end
 
   def attr_reader *names
-    RDot.attr_register *module_scope, names, '[r]', parse_caller(caller)
-    old_attr_reader *names
+    RDot.register_attribute *module_scope, names, '[r]', parse_caller(caller)
+    rdot_old_attr_reader *names
   end
 
   def attr_writer *names
-    RDot.attr_register *module_scope, names, '[w]', parse_caller(caller)
-    old_attr_writer *names
+    RDot.register_attribute *module_scope, names, '[w]', parse_caller(caller)
+    rdot_old_attr_writer *names
   end
 
   def attr_accessor *names
-    RDot.attr_register *module_scope, names, '[rw]', parse_caller(caller)
-    old_attr_accessor *names
+    RDot.register_attribute *module_scope, names, '[rw]', parse_caller(caller)
+    rdot_old_attr_accessor *names
   end
+
+  private :module_scope, :parse_caller, :attr, :attr_reader, :attr_writer,
+      :attr_accessor
 
 end
 
@@ -82,14 +86,6 @@ class String
     gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;').gsub("\n", '\n')
   end
 
-  def short max
-    if length > max
-      self[0..max-20] + ' ... ' + self[-15..-1]
-    else
-      self
-    end
-  end
-
 end
 
 module RDot
@@ -98,612 +94,245 @@ module RDot
 
   class << self
 
-    def attr_list
-      @@attr_list ||= {}
-      @@attr_list
-    end
-
-    def attr_register mod, scope, names, access, source
-      @@attr_list ||= {}
-      @@attr_list[mod] ||= {}
-      @@attr_list[mod][scope] ||= {}
+    def register_attribute mod, scope, names, access, source
+      @attributes ||= {}
+      @attributes[mod] ||= {}
+      @attributes[mod][scope] ||= {}
       names.each do |name|
-        @@attr_list[mod][scope][name] = { :access => access, :source => source }
+        @attributes[mod][scope][name.intern] = {
+          :access => access,
+          :source => source
+        }
       end
     end
 
-    def processed
-      @@processed ||= []
-      @@processed
-    end
-
-    def processed_push value
-      @@processed ||= []
-      @@processed.push value.module
-    end
-
-    def processed? value
-      @@processed ||= []
-      @@processed.include? value.module
-    end
-
-    def processed_reset
-      @@processed = []
-    end
-
-  end
-
-  class Method
-
-    attr_reader :ruby
-    attr_reader :owner
-    attr_reader :name
-    attr_reader :signature
-    attr_reader :source
-    attr_reader :file
-    attr_reader :line
-    attr_reader :attribute
-
-    def visibility
-      @opts[:visibility]
-    end
-
-    def scope
-      @opts[:scope]
-    end
-
-    def initialize owner, ruby, opts = {}
-      @owner = owner
-      @opts = opts
-      @ruby = ruby
-      @name = ruby.name
-      @scope = opts[:scope] || :instance
-      @source = ruby.source_location
-      if @source
-        if @source[0] == __FILE__ &&
-          ($module_hook_start..$module_hook_end).include?(@source[1])
-          nm = @name.to_s
-          if nm[-1] == '='
-            nm = nm[0..-2]
+    def get_file file
+      src = File.expand_path file
+      $:.each do |dir|
+        dir = File.expand_path dir
+        len = dir.length
+        if src[0...len] == dir
+          src = src[len..-1]
+          if src[0] == '/'
+            src = src[1..-1]
           end
+          return src
+        end
+      end
+      return file
+    end
+
+    def get_method_object mod, scope, name
+      case scope
+      when :instance
+        mod.instance_method(name)
+      when :class
+        mod.singleton_class.instance_method(name)
+      end
+    end
+
+    def add_method acc, mod, scope, visibility, name, opts = {}
+      m = get_method_object mod, scope, name
+      src = m.source_location
+      obj = {}
+      if src
+        if src[0] == __FILE__ &&
+            ($module_hook_start..$module_hook_end).include?(src[1])
+          nm = name.to_s
+          nm = nm[0..-2] if nm[-1] == '='
           nm = nm.intern
-          if RDot.attr_list && RDot.attr_list[ruby.owner] &&
-              RDot.attr_list[ruby.owner][@scope] &&
-              RDot.attr_list[ruby.owner][@scope][nm]
-            @source = RDot.attr_list[ruby.owner][@scope][nm][:source]
-            @attribute = nm
+          if @attributes && @attributes[mod] && @attributes[mod][scope] &&
+              @attributes[mod][scope][nm]
+            src = @attributes[mod][scope][nm][:source]
+            obj[:access] = @attributes[mod][scope][nm][:access]
           end
         end
-        @file = @source[0]
-        $:.each do |path|
-          l = path.length
-          if @file[0...l] == path
-            @file = @file[l..-1]
-            break
+        obj[:file] = get_file src[0]
+        obj[:line] = src[1]
+        if opts[:exclude_files]
+          opts[:exclude_files].each do |f|
+            if File.expand_path(f) == File.expand_path(src[0])
+              return nil
+            end
           end
         end
-        @file = @file.escape
-        @line = @source[1]
+        if opts[:filter_files]
+          opts[:filter_files].each do |f|
+            if File.expand_path(f) == File.expand_path(src[0])
+              return nil
+            end
+          end
+        end
+      elsif opts[:filter_files]
+        return nil
       end
-      @signature = @name.to_s.escape
-      if ! @opts[:hide_arguments]
-        letter = 'a'
-        first = true
-        ruby.parameters.each do |par|
-          if par.size == 1
-            n = letter
-            letter = letter.succ
-          else
-            n = par[1]
-          end
-          case par[0]
-          when :req
-            @signature += "#{first && ' ' || ', '}#{n}"
-          when :opt
-            @signature += "#{first && ' [' || ' [, '}#{n}]"
-          when :rest
-            @signature += "#{first && ' *' || ', *'}#{n}"
-          when :block
-            @signature += "#{first && ' &amp;' || ', &amp;'}#{n}"
-          end
-          first = nil
-        end
-      end
-    end
-
-    def <=> other
-      @name <=> other.name
-    end
-
-  end
-
-  class Module
-
-    include Comparable
-
-    attr_reader :name, :module
-    attr_accessor :ancestors, :extensions
-    attr_reader :instance_private_methods, :instance_protected_methods,
-        :instance_public_methods, :class_private_methods,
-        :class_protected_methods, :class_public_methods, :constants
-
-    attr_reader :opts
-
-    def initialize space, mod, opts = {}
-      @space = space
-      @opts = opts
-      @module = mod
-      @name = mod.name
-      @instance_public_methods = {}
-      @instance_protected_methods = {}
-      @instance_private_methods = {}
-      @class_public_methods = {}
-      @class_protected_methods = {}
-      @class_private_methods = {}
-      @attributes = {}
-      @constants = {}
-      @ancestors = []
-      @extensions = []
-      @kind = Class === mod && (mod <= Exception && :exception || :class) ||
-          :module
-      if ! @opts[:no_init]
-        if ! @opts[:hide_methods]
-          mod.instance_methods(false).each do |m|
-            m = mod.instance_method(m)
-            next if m.owner != mod
-            @instance_public_methods[m.name] = RDot::Method.new self, m, @opts
-          end
-          mod.methods(false).each do |m|
-            m = mod.method(m).unbind
-            next if m.owner != mod.singleton_class
-            @class_public_methods[m.name] = RDot::Method.new self, m, @opts.merge(:scope => :class)
-          end
-          if @opts[:show_protected]
-            mod.instance_protected_methods(false) do |m|
-              m = mod.instance_method(m)
-              next if m.owner != mod
-              @instance_protected_methods[m.name] = RDot::Method.new self, m, @opts.merge(:visibility => :protected)
-            end
-            mod.protected_methods(false).each do |m|
-              m = mod.method(m).unbind
-              next if m.owner != mod.singleton_class
-              @class_protected_methods[m.name] = RDot::Method.new self, m, @opts.merge(:visibility => :protected, :scope => :class)
-            end
-          end
-          if @opts[:show_private]
-            mod.instance_private_methods(false) do |m|
-              m = mod.instance_method(m)
-              next if m.owner != mod
-              @instance_private_methods[m.name] = RDot::Method.new self, m, @opts.merge(:visibility => :private)
-            end
-            mod.private_methods(false).each do |m|
-              m = mod.method(m).unbind
-              next if m.owner != mod.singleton_class
-              @class_private_methods[m.name] = RDot::Method.new self, m, @opts.merge(:visibility => :private, :scope => :class)
-            end
-          end
-        end
-        if ! @opts[:hide_constants]
-          mod.constants(false).each do |c|
-            next if mod == Object && c == :Config
-            @constants[c] = mod.const_get c
-          end
-        end
-        @ancestors = mod.ancestors - [mod]
-        @extensions = mod.singleton_class.ancestors - [mod.singleton_class, mod.class, ::Module, ::Class, ::Object, ::Kernel, ::BasicObject]
-        if Class === mod && mod.superclass
-          @ancestors -= [mod.superclass] + mod.superclass.ancestors
-          @extensions -= [mod.superclass.singleton_class] +
-              mod.superclass.singleton_class.ancestors
-        end
-        dels = @ancestors.clone
-        dels.each do |del|
-          @ancestors -= del.ancestors - [del]
-        end
-        dels = @extensions.clone
-        dels.each do |del|
-          @extensions -= del.ancestors - [del]
-        end
-      end
-    end
-
-    def add_method m
-      if m.visibility == :private
-        if m.scope == :class
-          @class_private_methods[m.name] = m
-        else
-          @instance_private_methods[m.name] = m
-        end
-      elsif m.visibility == :protected
-        if m.scope == :class
-          @class_protected_methods[m.name] = m
-        else
-          @instance_protected_methods[m.name] = m
-        end
+      acc[scope] ||= {}
+      acc[scope][visibility] ||= {}
+      if opts[:select_attributes] && obj[:access]
+        obj[:signature] = nm.to_s + ' ' + obj[:access]
+        acc[scope][visibility][:attributes] ||= {}
+        acc[scope][visibility][:attributes][nm] = obj
       else
-        if m.scope == :class
-          @class_public_methods[m.name] = m
-        else
-          @instance_public_methods[m.name] = m
+        ltr = 'a'
+        obj[:signature] = name.to_s + ' ' + m.parameters.map do |q, n|
+          nm = n || ltr
+          ltr = ltr.succ
+          case q
+          when :req
+            nm
+          when :opt
+            "#{nm} = <def>"
+          when :rest
+            "*#{nm}"
+          when :block
+            "&#{nm}"
+          end
+        end.join(', ')
+        acc[scope][visibility][:methods] ||= {}
+        acc[scope][visibility][:methods][name] = obj
+      end
+      return obj
+    end
+
+    def get_module mod, opts = {}
+      result = {}
+      incs = mod.included_modules - [mod]
+      exts = mod.singleton_class.included_modules - Module.included_modules
+      if Class === mod
+        exts -= Class.included_modules
+        result[:superclass] = mod.superclass && mod.superclass.inspect || nil
+        if mod.superclass
+          incs -= mod.superclass.included_modules
+          exts -= mod.superclass.singleton_class.included_modules
         end
       end
+      incs.dup.each { |d| incs -= d.included_modules }
+      exts.dup.each { |d| exts -= d.included_modules }
+      result[:included] = incs.map &:inspect
+      result[:extended] = exts.map &:inspect
+      result[:nested] = mod.namespace && mod.namespace.inspect || nil
+      if ! opts[:hide_constants]
+        result[:constants] = {}
+        mod.constants(false).each do |c|
+          next if mod == Object && c == :Config
+          result[:constants][c] = mod.const_get(c).class.inspect
+        end
+      end
+      if ! opts[:hide_methods]
+        mod.instance_methods(false).each do |m|
+          add_method result, mod, :instance, :public, m, opts
+        end
+        mod.singleton_class.instance_methods(false).each do |m|
+          add_method result, mod, :class, :public, m, opts
+        end
+        if opts[:show_protected]
+          mod.protected_instance_methods(false).each do |m|
+            add_method result, mod, :instance, :protected, m, opts
+          end
+          mod.singleton_class.protected_instance_methods(false).each do |m|
+            add_method result, mod, :class, :protected, m, opts
+          end
+        end
+        if opts[:show_private]
+          mod.private_instance_methods(false).each do |m|
+            add_method result, mod, :instance, :private, m, opts
+          end
+          mod.singleton_class.private_instance_methods(false).each do |m|
+            add_method result, mod, :class, :private, m, opts
+          end
+        end
+      end
+      result
     end
 
-    def add_constant name, value
-      @constants[name] = value
+    def add_module acc, mod, opts = {}
+      if opts[:exclude_classes]
+        opts[:exclude_classes].each do |c|
+          return nil if mod <= c
+        end
+      end
+      if opts[:filter_classes]
+        opts[:filter_classes].each do |c|
+          return nil unless mod <= c
+        end
+      end
+      if opts[:exclude_namespaces]
+        opts[:exclude_namespaces].each do |n|
+          return nil if mod == n || mod.in?(n)
+        end
+      end
+      if opts[:filter_namespaces]
+        opts[:filter_namespaces].each do |n|
+          return nil unless mod == n || mod.in?(n)
+        end
+      end
+      if opts[:filter_global]
+        return nil unless mod.global?
+      end
+      acc[mod.inspect] = get_module mod, opts
     end
 
-    def [] name
-      @instance_public_methods[name] || @instance_protected_methods[name] ||
-          @instance_private_methods[name] || @class_public_methods[name] ||
-          @class_protected_methods[name] || @class_private_methods[name] ||
-          @constants[name]
+    def snapshot opts = {}
+      result = {}
+      ObjectSpace.each_object(Module) { |m| add_module result, m, opts }
+      result
     end
 
-    def <=> other
-      @name <=> other.name
-    end
-
-    def sub other
-      if other == nil
-        $stderr.puts @name
+    def diff_module base, other
+      if ! other
         return self
       end
-      result = RDot::Module.new @space, @module, @opts.merge(:no_init => true, :preloaded => true)
-      @instance_public_methods.each do |n, m|
-        result.add_method(m) unless other[n] # && other[n].ruby == m.ruby
+      result = {}
+      result[:superclass] = base[:superclass]
+      result[:nested] = base[:nested]
+      result[:included] = base[:included] - other[:included]
+      result[:extended] = base[:extended] - other[:extended]
+      result[:constants] = {}
+      if base[:constants]
+        base[:constants].each do |c|
+          if base[:constants][c] != other[:constants][c]
+            result[:constants][c] = base[:constants][c]
+          end
+        end
       end
-      @instance_protected_methods.each do |n, m|
-        result.add_method(m) unless other[n] # && other[n].ruby == m.ruby
+      [:class, :instance].each do |s|
+        [:public, :protected, :private].each do |v|
+          [:attributes, :methods].each do |k|
+            if base[s] && base[s][v] && base[s][v][k]
+              base[s][v][k].each do |n, m|
+                unless other[s] && other[s][v] && other[s][v][k] &&
+                    other[s][v][k][n] &&
+                    other[s][v][k][n][:file] == m[:file] &&
+                    other[s][v][k][n][:line] == m[:line]
+                  result[s] ||= {}
+                  result[s][v] ||= {}
+                  result[s][v][k] ||= {}
+                  result[s][v][k][n] = m
+                end
+              end
+            end
+          end
+        end
       end
-      @instance_private_methods.each do |n, m|
-        result.add_method(m) unless other[n] # && other[n].ruby == m.ruby
-      end
-      @class_public_methods.each do |n, m|
-        result.add_method(m) unless other[n] # && other[n].ruby == m.ruby
-      end
-      @class_protected_methods.each do |n, m|
-        result.add_method(m) unless other[n] # && other[n].ruby == m.ruby
-      end
-      @class_private_methods.each do |n, m|
-        result.add_method(m) unless other[n] # && other[n].ruby == m.ruby
-      end
-      @constants.each do |n, c|
-        result.add_constant(n, c) unless other.constants[n] # != c
-      end
-      result.ancestors = @ancestors - other.ancestors
-      result.extensions = @extensions - other.extensions
-      if result.instance_public_methods.empty? &&
-          result.instance_protected_methods.empty? &&
-          result.instance_private_methods.empty? &&
-          result.class_public_methods.empty? &&
-          result.class_protected_methods.empty? &&
-          result.class_private_methods.empty? &&
-          result.constants.empty? && result.ancestors.empty? &&
-          result.extensions.empty?
+      if result[:included].empty? && result[:extended].empty? &&
+          result[:constants].empty? && result[:class].nil? &&
+          result[:instance].nil?
         nil
       else
-        $stderr.puts result.name
-        $stderr.puts result.class_public_methods.pretty_inspect
         result
       end
     end
 
-    def node_name
-      "node_#{@module.inspect.tr('#<>() =,.;:', '_')}"
-    end
-
-    def node_color
-      if @opts[:preloaded]
-        case @kind
-        when :exception
-          @opts[:color_exception_preloaded] || 'chocolate'
-        when :class
-          @opts[:color_class_preloaded] || 'mediumseagreen'
-        when :module
-          @opts[:color_module_preloaded] || 'steelblue'
-        end
-      else
-        case @kind
-        when :exception
-          @opts[:color_exception] || 'lightcoral'
-        when :class
-          @opts[:color_class] || 'mediumaquamarine'
-        when :module
-          @opts[:color_module] || 'skyblue'
-        end
-      end
-    end
-
-    def node_rows
-      result = ''
-      if !(@opts[:hide_constants] || @constants.empty?)
-        c = @constants.map do |n, v|
-          "#{n} &lt;#{v.class}&gt;".short(50)
-        end
-        result += '<TR>' +
-            '<TD ROWSPAN="' + c.size.to_s + '" VALIGN="TOP" ALIGN="RIGHT">const</TD>' +
-            '<TD COLSPAN="3" ALIGN="LEFT">' + c.join('</TD></TR><TR><TD COLSPAN="3" ALIGN="LEFT">') +
-            '</TD></TR>'
-      end
-      if ! (@opts[:hide_methods] ||
-            (@class_public_methods.empty? && @class_protected_methods.empty? &&
-             @class_private_methods.empty?))
-        public_attrs = []
-        public_meths = []
-        protected_attrs = []
-        protected_meths = []
-        private_attrs = []
-        private_meths = []
-        @class_public_methods.values.sort.each do |m|
-          if @opts[:select_attributes] && m.attribute
-            public_attrs << [m.attribute, m] unless public_attrs.include? m.attribute
-          else
-            public_meths << m
-          end
-        end
-        @class_protected_methods.values.sort.each do |m|
-          if @opts[:select_attributes] && m.attribute
-            protected_attrs << [m.attribute, m] unless protected_attrs.include? m.attribute
-          else
-            protected_meths << m
-          end
-        end
-        @class_private_methods.values.sort.each do |m|
-          if @opts[:select_attributes] && m.attribute
-            private_attrs << [m.attribute, m] unless private_attrs.include? m.attribute
-          else
-            private_meths << m
-          end
-        end
-        rows = []
-        rows += public_attrs.map do |a|
-          acc = RDot.attr_list[@module][:class][a[0]][:access]
-          "<TD ALIGN=\"LEFT\">#{a[0].to_s.escape} #{acc}</TD><TD>#{a[1].file}</TD><TD>#{a[1].line}</TD>"
-        end
-        rows += public_meths.map do |m|
-          "<TD ALIGN=\"LEFT\">#{m.signature}</TD><TD>#{m.file}</TD><TD>#{m.line}</TD>"
-        end
-        rows += protected_attrs.map do |a|
-          acc = RDot.attr_list[@module][:class][a[0]][:access]
-          "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\" ALIGN=\"LEFT\">#{a[0].to_s.escape} #{acc}</TD>" +
-              "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{a[1].file}</TD>" +
-              "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{a[1].line}</TD>"
-        end
-        rows += protected_meths.map do |m|
-          "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\" ALIGN=\"LEFT\">#{m.signature}</TD>" +
-              "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{m.file}</TD>" +
-              "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{m.line}</TD>"
-        end
-        rows += private_attrs.map do |a|
-          acc = RDot.attr_list[@module][:class][a[0]][:access]
-          "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\" ALIGN=\"LEFT\">#{a[0].to_s.escape} #{acc}</TD>" +
-              "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{a[1].file}</TD>" +
-              "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{a[1].line}</TD>"
-        end
-        rows += private_meths.map do |m|
-          "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\" ALIGN=\"LEFT\">#{m.signature}</TD>" +
-              "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{m.file}</TD>" +
-              "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{m.line}</TD>"
-        end
-        result += '<TR>' +
-            '<TD ROWSPAN="' + rows.size.to_s + '" VALIGN="TOP" ALIGN="RIGHT">class</TD>' +
-            rows.join('</TR><TR>') + '</TR>'
-      end
-      if ! (@opts[:hide_methods] ||
-            (@instance_public_methods.empty? && @instance_protected_methods.empty? &&
-             @instance_private_methods.empty?))
-        public_attrs = []
-        public_meths = []
-        protected_attrs = []
-        protected_meths = []
-        private_attrs = []
-        private_meths = []
-        @instance_public_methods.values.sort.each do |m|
-          if @opts[:select_attributes] && m.attribute
-            public_attrs << [m.attribute, m] unless public_attrs.include? m.attribute
-          else
-            public_meths << m
-          end
-        end
-        @instance_protected_methods.values.sort.each do |m|
-          if @opts[:select_attributes] && m.attribute
-            protected_attrs << [m.attribute, m] unless protected_attrs.include? m.attribute
-          else
-            protected_meths << m
-          end
-        end
-        @instance_private_methods.values.sort.each do |m|
-          if @opts[:select_attributes] && m.attribute
-            private_attrs << [m.attribute, m] unless private_attrs.include? m.attribute
-          else
-            private_meths << m
-          end
-        end
-        rows = []
-        rows += public_attrs.map do |a|
-          acc = RDot.attr_list[@module][:instance][a[0]][:access]
-          "<TD ALIGN=\"LEFT\">#{a[0].to_s.escape} #{acc}</TD><TD>#{a[1].file}</TD><TD>#{a[1].line}</TD>"
-        end
-        rows += public_meths.map do |m|
-          "<TD ALIGN=\"LEFT\">#{m.signature}</TD><TD>#{m.file}</TD><TD>#{m.line}</TD>"
-        end
-        rows += protected_attrs.map do |a|
-          acc = RDot.attr_list[@module][:instance][a[0]][:access]
-          "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\" ALIGN=\"LEFT\">#{a[0].to_s.escape} #{acc}</TD>" +
-              "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{a[1].file}</TD>" +
-              "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{a[1].line}</TD>"
-        end
-        rows += protected_meths.map do |m|
-          "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\" ALIGN=\"LEFT\">#{m.signature}</TD>" +
-              "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{m.file}</TD>" +
-              "<TD BGCOLOR=\"#{@opts[:color_protected] || '#EEEEEE'}\">#{m.line}</TD>"
-        end
-        rows += private_attrs.map do |a|
-          acc = RDot.attr_list[@module][:instance][a[0]][:access]
-          "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\" ALIGN=\"LEFT\">#{a[0].to_s.escape} #{acc}</TD>" +
-              "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{a[1].file}</TD>" +
-              "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{a[1].line}</TD>"
-        end
-        rows += private_meths.map do |m|
-          "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\" ALIGN=\"LEFT\">#{m.signature}</TD>" +
-              "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{m.file}</TD>" +
-              "<TD BGCOLOR=\"#{@opts[:color_private] || '#DDDDDD'}\">#{m.line}</TD>"
-        end
-        result += '<TR>' +
-            '<TD ROWSPAN="' + rows.size.to_s + '" VALIGN="TOP" ALIGN="RIGHT">instance</TD>' +
-            rows.join('</TR><TR>') + '</TR>'
+    def diff base, other
+      result = {}
+      base.each do |n, m|
+        d = diff_module m, other[n]
+        result[n] = d if d
       end
       result
     end
 
-    def to_dot out = ''
-      if ! RDot.processed? self
-        RDot.processed_push self
-        fname = @opts[:name_fontname] || @opts[:fontname] || 'monospace'
-        fsize = @opts[:name_fontsize] || @opts[:fontsize] || 9
-        out.echo '  ', node_name, '['
-        out.echo '    label=<' + '<TABLE CELLBORDER="0" CELLSPACING="0">' +
-            '<TR>' + '<TD ALIGN="RIGHT" BGCOLOR="', node_color, '">' +
-            '<FONT FACE="', fname, '" POINT-SIZE="', fsize, '">' + @kind.to_s +
-            '</FONT>' + '</TD>' +
-            '<TD COLSPAN="3" ALIGN="LEFT" BGCOLOR="', node_color, '">' +
-            '<FONT FACE="', fname, '" POINT-SIZE="', fsize, '">' +
-            @module.inspect.escape + '</FONT>' + '</TD>' + '</TR>' + node_rows +
-            '</TABLE>' + '>'
-        out.echo '  ];'
-        if Class === @module && @module.superclass
-          sup =  @space[@module.superclass] ||
-              RDot::Module.new(@space, @module.superclass, @opts.merge(:no_init => true, :preloaded => true))
-          sup.to_dot out
-          out.echo '  ', sup.node_name, ' -> ', node_name, '[color="',
-              @opts[:color_inherited] || 'steelblue', '", weight=1];'
-        end
-        @ancestors.each do |a|
-          anc = @space[a] ||
-              RDot::Module.new(@space, a, @opts.merge(:no_init => true, :preloaded => true))
-          anc.to_dot out
-          out.echo '  ', anc.node_name, ' -> ', node_name,
-              '[color="', @opts[:color_included] || 'skyblue', '", weight=10];'
-        end
-        @extensions.each do |e|
-          ext = @space[e] ||
-              RDot::Module.new(@space, e, @opts.merge(:no_init => true, :preloaded => true))
-          ext.to_dot out
-          out.echo '  ', ext.node_name, ' -> ', node_name, '[color="',
-              @opts[:color_extended] || 'olivedrab', '", weight=10];'
-        end
-        if (ns = @module.namespace)
-          nsm = @space[ns] ||
-              RDot::Module.new(@space, ns, @opts.merge(:no_init => true, :preloaded => true))
-          nsm.to_dot out
-          out.echo '  ', nsm.node_name, ' -> ', node_name,
-              '[color="', @opts[:color_nested] || '#AAAAAA', '", weight=100]'
-        end
-      end
-    end
-
-    private :node_color, :node_rows
-    protected :add_method, :add_constant, :node_name
-
-  end
-
-  class Space
-
-    include Enumerable
-
-    attr_reader :modules
-
-    def initialize opts = {}
-      @opts = opts
-      @modules = {}
-      if ! opts[:no_init]
-        ObjectSpace.each_object ::Module do |m|
-          catch :module do
-            if (exclude_classes = @opts[:exclude_classes])
-              exclude_classes.each { |cls| throw :module if m <= cls }
-            end
-            if (only_classes = @opts[:only_classes])
-              only_classes.each { |cls| throw :module if !(m <= cls) }
-            end
-            if (exclude_namespaces = @opts[:exclude_namespaces])
-              exclude_namespaces.each do |ns|
-                throw :module if m == ns || m.in?(ns)
-              end
-            end
-            if (only_namespaces = @opts[:only_namespaces])
-              only_namespaces.each do |ns|
-                throw :module if m != ns && ! m.in?(ns)
-              end
-            end
-            if @opts[:only_global]
-              throw :module if !m.global?
-            end
-            @modules[m] = RDot::Module.new self, m, @opts
-          end
-        end
-      end
-    end
-
-    def [] mod
-      @modules[mod]
-    end
-
-    def []= mod, m
-      @modules[mod] = m
-    end
-
-    def each &block
-      @modules.each &block
-    end
-
-    def sub other
-      result = RDot::Space.new @opts.merge(:no_init => true)
-      $stderr.puts result.pretty_inspect
-      @modules.each do |_, m|
-        sm = m.sub other[m.module]
-        $stderr.puts sm.name if sm
-        result[m.module] = sm if sm
-      end
-      result
-    end
-
-    def title
-      return @opts[:title] if @opts[:title]
-      return 'RDot: ' + @opts[:includes].join(', ') if @opts[:includes]
-      'RDot Graph'
-    end
-
-    def to_dot out = ''
-      if ! out.respond_to?(:<<)
-        raise 'Invalid output.'
-      end
-      out.echo 'digraph graph_RDot{'
-      out.echo '  graph['
-      out.echo '    rankdir=LR,'
-      out.echo '    splines=true,'
-      out.echo '    fontname="', @opts[:caption_fontname] || 'sans-serif', '",'
-      out.echo '    fontsize=', @opts[:caption_fontsize] || 24, ','
-      out.echo '    labelloc=t,'
-      out.echo '    label="', title, '"'
-      out.echo '  ];'
-      out.echo '  node['
-      out.echo '    shape=plaintext,'
-      out.echo '    fontname="', @opts[:fontname] || 'monospace', '",'
-      out.echo '    fontsize=', @opts[:fontsize] || 9
-      out.echo '  ];'
-      out.echo '  edge[dir=back, arrowtail=vee];'
-      out.echo
-      RDot.processed_reset
-      @modules.each do |_, m|
-        m.to_dot out
-      end
-      out.echo
-      out.echo '}'
-    end
-
-    private :title
-    protected :[]=
+    private :get_file, :get_method_object, :get_module, :add_method, :add_module
 
   end
 
