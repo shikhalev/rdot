@@ -94,6 +94,11 @@ module RDot
 
   class << self
 
+    def init
+      @preset = []
+      ObjectSpace.each_object(Module) { |m| @preset << m if m != ::RDot }
+    end
+
     def register_attribute mod, scope, names, access, source
       @attributes ||= {}
       @attributes[mod] ||= {}
@@ -176,7 +181,7 @@ module RDot
         acc[scope][visibility][:attributes][nm] = obj
       else
         ltr = 'a'
-        obj[:signature] = name.to_s + ' ' + m.parameters.map do |q, n|
+        obj[:signature] = name.to_s + '(' + m.parameters.map do |q, n|
           nm = n || ltr
           ltr = ltr.succ
           case q
@@ -189,7 +194,7 @@ module RDot
           when :block
             "&#{nm}"
           end
-        end.join(', ')
+        end.join(', ') + ')'
         acc[scope][visibility][:methods] ||= {}
         acc[scope][visibility][:methods][name] = obj
       end
@@ -284,9 +289,12 @@ module RDot
       result
     end
 
-    def diff_module base, other
+    def diff_module base, other, opts
       if ! other
         return base.merge :new => true
+      end
+      if opts[:show_preloaded]
+        return base
       end
       result = {}
       result[:module] = base[:module]
@@ -333,13 +341,13 @@ module RDot
       end
     end
 
-    def diff base, other
+    def diff base, other, opts = {}
       if other == nil
         return base
       end
       result = {}
       base.each do |n, m|
-        d = diff_module m, other[n]
+        d = diff_module m, other[n], opts
         result[n] = d if d
       end
       result
@@ -357,22 +365,26 @@ module RDot
 
     def defaults
       {
-        :graph_fontname         => 'sans-serif',
-        :graph_fontsize         => 24,
-        :graph_label            => 'RDot Graph',
-        :node_fontname          => 'monospace',
-        :node_fontsize          => 9,
-        :head_fontname          => 'monospace',
-        :head_fontsize          => 12,
-        :color_class            => '#CCFFCC',
-        :color_exception        => '#FFCCCC',
-        :color_module           => '#CCCCFF',
-        :color_protected        => '#EEEEEE',
-        :color_private          => '#DDDDDD',
-        :color_inherited        => '#0000FF',
-        :color_included         => '#00AAFF',
-        :color_extended         => '#AA00FF',
-        :color_nested           => '#EEEEEE'
+        :graph_fontname                 => 'sans-serif',
+        :graph_fontsize                 => 24,
+        :graph_label                    => 'RDot Graph',
+        :node_fontname                  => 'monospace',
+        :node_fontsize                  => 9,
+        :color_class                    => '#BBFFBB',
+        :color_class_preloaded          => '#CCEECC',
+        :color_class_core               => '#DDFF99',
+        :color_exception                => '#FFBBBB',
+        :color_exception_preloaded      => '#EECCCC',
+        :color_exception_core           => '#FFDD99',
+        :color_module                   => '#BBBBFF',
+        :color_module_preloaded         => '#CCCCEE',
+        :color_module_core              => '#99DDFF',
+        :color_protected                => '#EEEEEE',
+        :color_private                  => '#DDDDDD',
+        :color_inherited                => '#0000FF',
+        :color_included                 => '#00AAFF',
+        :color_extended                 => '#AA00FF',
+        :color_nested                   => '#EEEEEE'
       }
     end
 
@@ -380,27 +392,61 @@ module RDot
       'node_' + name.gsub(/\W/, '_')
     end
 
+    def module_stage m
+      if @preset.include? m[:module]
+        :core
+      elsif m[:new]
+        :new
+      else
+        :old
+      end
+    end
+
     def node_color m, opts
-      if Class === m[:module]
-        if m[:module] <= Exception
-          opts[:color_exception]
+      mod = m[:module]
+      stg = module_stage m
+      if Class === mod
+        if mod <= Exception
+          case stg
+          when :core
+            opts[:color_exception_core]
+          when :old
+            opts[:color_exception_preloaded]
+          when :new
+            opts[:color_exception]
+          end
         else
-          opts[:color_class]
+          case stg
+          when :core
+            opts[:color_class_core]
+          when :old
+            opts[:color_class_preloaded]
+          when :new
+            opts[:color_class]
+          end
         end
       else
-        opts[:color_module]
+        case stg
+        when :core
+          opts[:color_module_core]
+        when :old
+          opts[:color_module_preloaded]
+        when :new
+          opts[:color_module]
+        end
       end
     end
 
     def module_kind m
+      stg = module_stage m
       if Class === m[:module]
         if m[:module] <= Exception
-          'exception'
+          "[#{stg}] exception"
         else
-          'class'
+          "[#{stg}] class"
         end
       else
-        'module'
+        "[#{stg}] module"
       end
     end
 
@@ -503,17 +549,15 @@ module RDot
       result << '<TABLE CELLBORDER="0" CELLSPACING="0">'
       result << '<TR>'
       result << '<TD ALIGN="RIGHT" BGCOLOR="' + node_color(m, opts) + '">'
-      result << '<FONT FACE="' + opts[:head_fontname] + '" POINT-SIZE="' +
-          opts[:head_fontsize].to_s + '">'
+      result << '<B>'
       result << module_kind(m)
-      result << '</FONT>'
+      result << '</B>'
       result << '</TD>'
       result << '<TD COLSPAN="3" ALIGN="LEFT" BGCOLOR="' +
           node_color(m, opts) + '">'
-      result << '<FONT FACE="' + opts[:head_fontname] + '" POINT-SIZE="' +
-          opts[:head_fontsize].to_s + '">'
+      result << '<B>'
       result << escape(name)
-      result << '</FONT>'
+      result << '</B>'
       result << '</TD>'
       result << '</TR>'
       result << dot_constants(m)
@@ -533,30 +577,30 @@ module RDot
       result << node_name(name) + '['
       result << '  label=<' + node_label(name, m, opts) + '>'
       result << '];'
-      if m[:superclass]
-        spc = find_module space, m[:superclass]
-        result << dot_module(space, m[:superclass], spc, opts)
-        result << node_name(m[:superclass]) + ' -> ' + node_name(name) +
-            '[color="' + opts[:color_inherited] + '", weight=10];'
-      end
       if m[:nested]
         ns = find_module space, m[:nested]
         result << dot_module(space, m[:nested], ns, opts)
-        result << node_name(m[:nested]) + ' -> ' + node_name(name) +
-            '[color="' + opts[:color_nested] + '", weight=1000, constraint=false];'
-      end
-      m[:included].each do |i|
-        next if m[:module] == CMath && i == 'Math'
-        inc = find_module space, i
-        result << dot_module(space, i, inc, opts)
-        result << node_name(inc[:module].inspect) + ' -> ' + node_name(name) +
-            '[color="' + opts[:color_included] + '", weight=1];'
+        @nested << node_name(m[:nested]) + ' -> ' + node_name(name) +
+            '[color="' + opts[:color_nested] + '", weight=1000, minlen=0];'
       end
       m[:extended].each do |e|
         ext = find_module space, e
         result << dot_module(space, e, ext, opts)
-        result << node_name(e) + ' -> ' + node_name(name) +
+        @extended << node_name(e) + ' -> ' + node_name(name) +
             '[color="' + opts[:color_extended] + '", weight=1];'
+      end
+      m[:included].each do |i|
+        next if m[:module].name == 'CMath' && i == 'Math'
+        inc = find_module space, i
+        result << dot_module(space, i, inc, opts)
+        @included << node_name(inc[:module].inspect) + ' -> ' + node_name(name) +
+            '[color="' + opts[:color_included] + '", weight=1];'
+      end
+      if m[:superclass]
+        spc = find_module space, m[:superclass]
+        result << dot_module(space, m[:superclass], spc, opts)
+        @inherited << node_name(m[:superclass]) + ' -> ' + node_name(name) +
+            '[color="' + opts[:color_inherited] + '", weight=10];'
       end
       result.join "\n  "
     end
@@ -583,17 +627,26 @@ module RDot
       result << '    arrowtail=vee'
       result << '  ];'
       @processed = []
+      @nested = []
+      @extended = []
+      @included = []
+      @inherited = []
       space.each do |n, m|
         mm = dot_module space, n, m, opts
         result << '  ' + mm if mm
       end
+      result << '  ' + @nested.join("\n  ")
+      result << '  ' + @included.join("\n  ")
+      result << '  ' + @extended.join("\n  ")
+      result << '  ' + @inherited.join("\n  ")
       result << '}'
       result.join "\n"
     end
 
     private :get_file, :get_method_object, :get_module, :add_method,
         :add_module, :diff_module, :find_module, :dot_module, :node_name,
-        :node_color, :node_label, :module_kind, :dot_constants, :dot_scope
+        :node_color, :node_label, :module_kind, :dot_constants, :dot_scope,
+        :module_stage
 
   end
 
