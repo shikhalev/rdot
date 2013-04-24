@@ -131,7 +131,7 @@ module RDot
       end
     end
 
-    def add_method acc, mod, scope, visibility, name, opts = {}
+    def add_method acc, mod, scope, visibility, name, opts
       m = get_method_object mod, scope, name
       src = m.source_location
       obj = {}
@@ -145,6 +145,8 @@ module RDot
               @attributes[mod][scope][nm]
             src = @attributes[mod][scope][nm][:source]
             obj[:access] = @attributes[mod][scope][nm][:access]
+          else
+            src = ['', nil]
           end
         end
         obj[:file] = get_file src[0]
@@ -158,7 +160,7 @@ module RDot
         end
         if opts[:filter_files]
           opts[:filter_files].each do |f|
-            if File.expand_path(f) == File.expand_path(src[0])
+            if File.expand_path(f) != File.expand_path(src[0])
               return nil
             end
           end
@@ -194,8 +196,9 @@ module RDot
       return obj
     end
 
-    def get_module mod, opts = {}
+    def get_module mod, opts
       result = {}
+      result[:module] = mod
       incs = mod.included_modules - [mod]
       exts = mod.singleton_class.included_modules - Module.included_modules
       if Class === mod
@@ -211,6 +214,9 @@ module RDot
       result[:included] = incs.map &:inspect
       result[:extended] = exts.map &:inspect
       result[:nested] = mod.namespace && mod.namespace.inspect || nil
+      if opts[:no_scan]
+        return result
+      end
       if ! opts[:hide_constants]
         result[:constants] = {}
         mod.constants(false).each do |c|
@@ -245,7 +251,7 @@ module RDot
       result
     end
 
-    def add_module acc, mod, opts = {}
+    def add_module acc, mod, opts
       if opts[:exclude_classes]
         opts[:exclude_classes].each do |c|
           return nil if mod <= c
@@ -280,9 +286,10 @@ module RDot
 
     def diff_module base, other
       if ! other
-        return self
+        return base.merge :new => true
       end
       result = {}
+      result[:module] = base[:module]
       result[:superclass] = base[:superclass]
       result[:nested] = base[:nested]
       result[:included] = base[:included] - other[:included]
@@ -319,11 +326,17 @@ module RDot
           result[:instance].nil?
         nil
       else
+        if result[:module] == Object
+          result[:included] << 'Kernel' if ! result[:included].include?(Kernel)
+        end
         result
       end
     end
 
     def diff base, other
+      if other == nil
+        return base
+      end
       result = {}
       base.each do |n, m|
         d = diff_module m, other[n]
@@ -332,7 +345,255 @@ module RDot
       result
     end
 
-    private :get_file, :get_method_object, :get_module, :add_method, :add_module
+    def find_module space, name
+      return space[name] if space[name]
+      begin
+        mod = sandbox { eval name }
+        return get_module(mod, :no_scan => true)
+      rescue
+      end
+      nil
+    end
+
+    def defaults
+      {
+        :graph_fontname         => 'sans-serif',
+        :graph_fontsize         => 24,
+        :graph_label            => 'RDot Graph',
+        :node_fontname          => 'monospace',
+        :node_fontsize          => 9,
+        :head_fontname          => 'monospace',
+        :head_fontsize          => 12,
+        :color_class            => '#CCFFCC',
+        :color_exception        => '#FFCCCC',
+        :color_module           => '#CCCCFF',
+        :color_protected        => '#EEEEEE',
+        :color_private          => '#DDDDDD',
+        :color_inherited        => '#0000FF',
+        :color_included         => '#00AAFF',
+        :color_extended         => '#AA00FF',
+        :color_nested           => '#EEEEEE'
+      }
+    end
+
+    def node_name name
+      'node_' + name.gsub(/\W/, '_')
+    end
+
+    def node_color m, opts
+      if Class === m[:module]
+        if m[:module] <= Exception
+          opts[:color_exception]
+        else
+          opts[:color_class]
+        end
+      else
+        opts[:color_module]
+      end
+    end
+
+    def module_kind m
+      if Class === m[:module]
+        if m[:module] <= Exception
+          'exception'
+        else
+          'class'
+        end
+      else
+        'module'
+      end
+    end
+
+    def escape s
+      s.gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;').gsub("\n", '\n')
+    end
+
+    def dot_constants m
+      result = []
+      if m[:constants]
+        m[:constants].sort.each do |n, c|
+          result << "#{escape(n.to_s)} &lt;#{escape(c)}&gt;"
+        end
+      end
+      if result.size != 0
+        '<TR><TD ROWSPAN="' + result.size.to_s +
+            '" ALIGN="RIGHT" VALIGN="TOP">const</TD><TD COLSPAN="3" ALIGN="LEFT">' +
+            result.join('</TD></TR><TR><TD COLSPAN="3" ALIGN="LEFT">') +
+            '</TD></TR>'
+      else
+        ''
+      end
+    end
+
+    def dot_scope m, scope, opts
+      result = []
+      if m[scope]
+        if m[scope][:public]
+          if m[scope][:public][:attributes]
+            m[scope][:public][:attributes].sort.each do |n, a|
+              result << '<TD ALIGN="LEFT">' + escape(a[:signature]) +
+                  '</TD><TD ALIGN="RIGHT">' + escape(a[:file].to_s) +
+                  '</TD><TD ALIGN="RIGHT">' + a[:line].to_s + '</TD>'
+            end
+          end
+          if m[scope][:public][:methods]
+            m[scope][:public][:methods].sort.each do |n, a|
+              result << '<TD ALIGN="LEFT">' + escape(a[:signature]) +
+                  '</TD><TD ALIGN="RIGHT">' + escape(a[:file].to_s) +
+                  '</TD><TD ALIGN="RIGHT">' + a[:line].to_s + '</TD>'
+            end
+          end
+        end
+        if m[scope][:protected]
+          if m[scope][:protected][:attributes]
+            m[scope][:protected][:attributes].sort.each do |n, a|
+              result << '<TD BGCOLOR="' + opts[:color_protected] +
+                  '" ALIGN="LEFT">' + escape(a[:signature]) +
+                  '</TD><TD BGCOLOR="' + opts[:color_protected] +
+                  '" ALIGN="RIGHT">' + escape(a[:file].to_s) +
+                  '</TD><TD BGCOLOR="' + opts[:color_protected] +
+                  '" ALIGN="RIGHT">' + a[:line].to_s + '</TD>'
+            end
+          end
+          if m[scope][:protected][:methods]
+            m[scope][:protected][:methods].sort.each do |n, a|
+              result << '<TD BGCOLOR="' + opts[:color_protected] +
+                  '" ALIGN="LEFT">' + escape(a[:signature]) +
+                  '</TD><TD BGCOLOR="' + opts[:color_protected] +
+                  '" ALIGN="RIGHT">' + escape(a[:file].to_s) +
+                  '</TD><TD BGCOLOR="' + opts[:color_protected] +
+                  '" ALIGN="RIGHT">' + a[:line].to_s + '</TD>'
+            end
+          end
+        end
+        if m[scope][:private]
+          if m[scope][:private][:attributes]
+            m[scope][:private][:attributes].sort.each do |n, a|
+              result << '<TD BGCOLOR="' + opts[:color_private] +
+                  '" ALIGN="LEFT">' + escape(a[:signature]) +
+                  '</TD><TD BGCOLOR="' + opts[:color_private] +
+                  '" ALIGN="RIGHT">' + escape(a[:file].to_s) +
+                  '</TD><TD BGCOLOR="' + opts[:color_private] +
+                  '" ALIGN="RIGHT">' + a[:line].to_s + '</TD>'
+            end
+          end
+          if m[scope][:private][:methods]
+            m[scope][:private][:methods].sort.each do |n, a|
+              result << '<TD BGCOLOR="' + opts[:color_private] +
+                  '" ALIGN="LEFT">' + escape(a[:signature]) +
+                  '</TD><TD BGCOLOR="' + opts[:color_private] +
+                  '" ALIGN="RIGHT">' + escape(a[:file].to_s) +
+                  '</TD><TD BGCOLOR="' + opts[:color_private] +
+                  '" ALIGN="RIGHT">' + a[:line].to_s + '</TD>'
+            end
+          end
+        end
+      end
+      if result.size != 0
+        '<TR><TD ROWSPAN="' + result.size.to_s +
+            '" ALIGN="RIGHT" VALIGN="TOP">' + scope.to_s + '</TD>' +
+            result.join('</TR><TR>') + '</TR>'
+      else
+        ''
+      end
+    end
+
+    def node_label name, m, opts
+      result = []
+      result << '<TABLE CELLBORDER="0" CELLSPACING="0">'
+      result << '<TR>'
+      result << '<TD ALIGN="RIGHT" BGCOLOR="' + node_color(m, opts) + '">'
+      result << '<FONT FACE="' + opts[:head_fontname] + '" POINT-SIZE="' +
+          opts[:head_fontsize].to_s + '">'
+      result << module_kind(m)
+      result << '</FONT>'
+      result << '</TD>'
+      result << '<TD COLSPAN="3" ALIGN="LEFT" BGCOLOR="' +
+          node_color(m, opts) + '">'
+      result << '<FONT FACE="' + opts[:head_fontname] + '" POINT-SIZE="' +
+          opts[:head_fontsize].to_s + '">'
+      result << escape(name)
+      result << '</FONT>'
+      result << '</TD>'
+      result << '</TR>'
+      result << dot_constants(m)
+      result << dot_scope(m, :class, opts)
+      result << dot_scope(m, :instance, opts)
+      result << '</TABLE>'
+      result.join ''
+    end
+
+    def dot_module space, name, m, opts
+      if @processed.include? m[:module]
+        return nil
+      else
+        @processed << m[:module]
+      end
+      result = []
+      result << node_name(name) + '['
+      result << '  label=<' + node_label(name, m, opts) + '>'
+      result << '];'
+      if m[:superclass]
+        spc = find_module space, m[:superclass]
+        result << dot_module(space, m[:superclass], spc, opts)
+        result << node_name(m[:superclass]) + ' -> ' + node_name(name) +
+            '[color="' + opts[:color_inherited] + '", weight=10];'
+      end
+      if m[:nested]
+        ns = find_module space, m[:nested]
+        result << dot_module(space, m[:nested], ns, opts)
+        result << node_name(m[:nested]) + ' -> ' + node_name(name) +
+            '[color="' + opts[:color_nested] + '", weight=1000, constraint=false];'
+      end
+      m[:included].each do |i|
+        next if m[:module] == CMath && i == 'Math'
+        inc = find_module space, i
+        result << dot_module(space, i, inc, opts)
+        result << node_name(inc[:module].inspect) + ' -> ' + node_name(name) +
+            '[color="' + opts[:color_included] + '", weight=1];'
+      end
+      m[:extended].each do |e|
+        ext = find_module space, e
+        result << dot_module(space, e, ext, opts)
+        result << node_name(e) + ' -> ' + node_name(name) +
+            '[color="' + opts[:color_extended] + '", weight=1];'
+      end
+      result.join "\n  "
+    end
+
+    def dot space, opts = {}
+      opts = defaults.merge opts
+      result = []
+      result << 'digraph graph_RDot{'
+      result << '  graph['
+      result << '    rankdir=LR,'
+      result << '    splines=true,'
+      result << '    labelloc=t,'
+      result << '    fontname="' + opts[:graph_fontname] + '",'
+      result << '    fontsize=' + opts[:graph_fontsize].to_s + ','
+      result << '    label="' + opts[:graph_label] + '"'
+      result << '  ];'
+      result << '  node['
+      result << '    shape=plaintext,'
+      result << '    fontname="' + opts[:node_fontname] + '",'
+      result << '    fontsize=' + opts[:node_fontsize].to_s + ''
+      result << '  ];'
+      result << '  edge['
+      result << '    dir=back,'
+      result << '    arrowtail=vee'
+      result << '  ];'
+      @processed = []
+      space.each do |n, m|
+        mm = dot_module space, n, m, opts
+        result << '  ' + mm if mm
+      end
+      result << '}'
+      result.join "\n"
+    end
+
+    private :get_file, :get_method_object, :get_module, :add_method,
+        :add_module, :diff_module, :find_module, :dot_module, :node_name,
+        :node_color, :node_label, :module_kind, :dot_constants, :dot_scope
 
   end
 
