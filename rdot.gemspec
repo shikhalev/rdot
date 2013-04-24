@@ -13,6 +13,7 @@ Gem::Specification.new do |g|
   g.license = 'GNU GPL'
 
   g.files = Dir['lib/*.rb'] + Dir['*.md'] + [ 'bin/rdot', '.yardopts' ]
+  g.executables = ['rdot']
   g.require_path = 'lib'
   g.required_ruby_version = '>= 1.9.2'
 end

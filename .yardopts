@@ -1,10 +1,8 @@
 --no-cache
---private
---protected
 --hide-void-return
 --plugin yard-is-monkey
 --title 'RDot: GraphViz class diagrams for Ruby'
 --query="/^@@/ !~ o.name && @api.text != 'ignore'"
-lib/**/*.rb 
+lib/**/*.rb
 - *.md
 

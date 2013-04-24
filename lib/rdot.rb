@@ -5,6 +5,7 @@ require 'is/monkey/namespace'
 
 $module_hook_start = __LINE__
 
+# @api ignore
 class Module
 
   def module_scope
@@ -63,30 +64,12 @@ class Module
   end
 
   private :module_scope, :parse_caller, :attr, :attr_reader, :attr_writer,
-      :attr_accessor
+      :attr_accessor, :rdot_old_attr, :rdot_old_attr_accessor,
+      :rdot_old_attr_reader, :rdot_old_attr_writer
 
 end
 
 $module_hook_end = __LINE__
-
-class Object
-
-  def echo *args
-    args.each do |a|
-      self << a
-    end
-    self << "\n"
-  end
-
-end
-
-class String
-
-  def escape
-    gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;').gsub("\n", '\n')
-  end
-
-end
 
 module RDot
 
@@ -99,6 +82,7 @@ module RDot
       ObjectSpace.each_object(Module) { |m| @preset << m if m != ::RDot }
     end
 
+    # @api ignore
     def register_attribute mod, scope, names, access, source
       @attributes ||= {}
       @attributes[mod] ||= {}
@@ -283,7 +267,10 @@ module RDot
       acc[mod.inspect] = get_module mod, opts
     end
 
+    # @param [Hash] opts
+    # @return [Hash]
     def snapshot opts = {}
+      opts = defaults.merge opts
       result = {}
       ObjectSpace.each_object(Module) { |m| add_module result, m, opts }
       result
@@ -341,7 +328,12 @@ module RDot
       end
     end
 
+    # @param [Hash] base
+    # @param [Hash] other
+    # @param [Hash] opts
+    # @return [Hash]
     def diff base, other, opts = {}
+      opts = defaults.merge opts
       if other == nil
         return base
       end
@@ -363,6 +355,7 @@ module RDot
       nil
     end
 
+    # @return [Hash]
     def defaults
       {
         :graph_fontname                 => 'sans-serif',
@@ -450,6 +443,8 @@ module RDot
       end
     end
 
+    # @param [String] s
+    # @return [String]
     def escape s
       s.gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;').gsub("\n", '\n')
     end
@@ -577,24 +572,29 @@ module RDot
       result << node_name(name) + '['
       result << '  label=<' + node_label(name, m, opts) + '>'
       result << '];'
-      if m[:nested]
+      if m[:nested] && ! opts[:hide_nested]
         ns = find_module space, m[:nested]
         result << dot_module(space, m[:nested], ns, opts)
         @nested << node_name(m[:nested]) + ' -> ' + node_name(name) +
             '[color="' + opts[:color_nested] + '", weight=1000, minlen=0];'
       end
-      m[:extended].each do |e|
-        ext = find_module space, e
-        result << dot_module(space, e, ext, opts)
-        @extended << node_name(e) + ' -> ' + node_name(name) +
+      if ! opts[:hide_extended]
+        m[:extended].each do |e|
+          ext = find_module space, e
+          result << dot_module(space, e, ext, opts)
+          @extended << node_name(e) + ' -> ' + node_name(name) +
             '[color="' + opts[:color_extended] + '", weight=1];'
+        end
       end
-      m[:included].each do |i|
-        next if m[:module].name == 'CMath' && i == 'Math'
-        inc = find_module space, i
-        result << dot_module(space, i, inc, opts)
-        @included << node_name(inc[:module].inspect) + ' -> ' + node_name(name) +
+      if ! opts[:hide_included]
+        m[:included].each do |i|
+          next if m[:module].name == 'CMath' && i == 'Math'
+          inc = find_module space, i
+          result << dot_module(space, i, inc, opts)
+          @included << node_name(inc[:module].inspect) + ' -> ' +
+              node_name(name) +
             '[color="' + opts[:color_included] + '", weight=1];'
+        end
       end
       if m[:superclass]
         spc = find_module space, m[:superclass]
@@ -605,6 +605,9 @@ module RDot
       result.join "\n  "
     end
 
+    # @param [Hash] space
+    # @param [Hash] opts
+    # @return [String]
     def dot space, opts = {}
       opts = defaults.merge opts
       result = []
@@ -647,6 +650,18 @@ module RDot
         :add_module, :diff_module, :find_module, :dot_module, :node_name,
         :node_color, :node_label, :module_kind, :dot_constants, :dot_scope,
         :module_stage
+
+  end
+
+end
+
+RDot.init
+
+module RDot
+
+  class << self
+
+    private :init
 
   end
 
