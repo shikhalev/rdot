@@ -1,86 +1,88 @@
-RDot v0.9.6 — GraphViz class diagrams for Ruby
-	http://github.com/shikhalev/rdot/
-
-Author: Ivan Shikhalev <shikhalev@gmail.com>
-	http://github.com/shikhalev/
-License: GNU General Public License, see COPYING
-	http://www.gnu.org/licenses/gpl.html
-
 Usage: rdot [options] <libs>
 
-Options:
+Service options:
     -h, --help                       Show short help and exit.
-    -I, --info=[INFO]                Show some program information and exit.
-                                     Argument may by comma-separated set of:
-                                         'about' — title with version
-                                                    and homepage,
-                                         'author' — author name with e-mail,
-                                         'license' — license info,
-                                         'usage' — command line arguments,
-                                         'version' — current version;
-                                     or one of predefined sets:
-                                         'all' = 'about,author,license,usage',
-                                         'help' = 'about,usage',
-                                         'info' (or no argument) =
-                                                       'about,author,license'.
-        --about                      Show program title with version and exit.
-        --author                     Show author information and exit.
-    -L, --license                    Show license information and exit.
-    -?, --usage                      Show command line arguments and exit.
-    -V, --version                    Show version and exit.
-    -x, -p, --excludeLIBS,           Comma-separated list of libraries
-        --preload                    which must be excluded from output graph.
-                                     This libs will be preloaded before start
-                                     registering any changes like standard
-                                     objects.
-    -i, --include, --input=LIBS      Comma-separated list of libraries for
-                                     processing. Also libs may be specified
-                                     in command line without any key.
-    -l, --libs=PATH                  Comma-separated list of directories for
-                                     search required libraries.
-    -o, --output=[FILE]              Send output to file instead stdout.
-                                     'rdot.dot' if no argument specified.
-    -t, --title=TITLE                Set graph title.
-    -f, --font=NAME                  Set font name.
-    -F, --caption-font=NAME          Set caption fontname.
-        --color-class=COLOR          Set class-node color. See:
-                                     http://graphviz.org/doc/info/colors.html
-        --color-class-preloaded=COLOR
-                                     Set node color for preloaded classes.
-        --color-class-evaluated=COLOR
-                                     Set node color for evaluated classes.
-        --color-exception=COLOR      Set node color for exception classes.
-        --color-exception-preloaded=COLOR
-                                     Set node color for preloaded exceptions.
-        --color-exception-evaluated=COLOR
-                                     Set node color for evaluated exceptions.
-        --color-module=COLOR         Set node color for modules.
-        --color-module-preloaded=COLOR
-                                     Set node color for preloaded modules.
-        --color-inherited=COLOR      Set inheritance-edge color.
-        --color-included=COLOR       Set include-edge color.
-        --color-extended=COLOR       Set extension-edge color.
-        --color-protected=COLOR      Set color marker for protected methods.
-        --color-private=COLOR        Set color marker for private methods.
-    -s, --show-protected             Show public and protected methods.
-    -S, --show-private               Show public, protected and private methods.
-    -z, --show-preloaded             Show methods etc. for preloaded classes.
-                                     Use this to see the structure of standard
-                                     Ruby classes.
-    -M, --hide-methods               Hide all methods from diagram.
-    -C, --hide-constants             Hide all constants.
-    -A, --hide-arguments             Hide method arguments.
-    -r, --no-trace                   Don't use trace func.
-                                     Use this if vizualized library make
-                                     tracing itself.
-    -e, --except=[LIST]              Except classes (with children) from
-                                     processing. If no classes specified,
-                                     the Exception will excepted.
-    -v, --verbose=[LEVEL]            Verbosity level.
-                                     none (0) or register (1) or scan (2).
+    -?, --usage                      Show usage info and exit.
+    -B, --about                      Show about string and exit.
+    -A, --author                     Show author and contact info and exit.
+    -L, --license                    Show info about license and exit.
+    -V, --version                    Show version number and exit.
+    -I, --info=[info]                Show some information and exit.
+                                     Argument may be comma-separated set of:
+                                       about, author, license, usage, version;
+                                     or one of presets:
+                                       help = about + usage,
+                                       info (or no argument) =
+                                                    about + author + license,
+                                       all = about + author + license + usage.
 
-Note:
-	Use `RUBYOPT="" rdot smth' if yor have RubyGems installed.
+    -o, --output=[file]              File for output instead STDOUT.
+                                       'rdot.dot' if empty.
+        --stdout                     Reset output to STDOUT.
 
-Samples:
-	see at http://github.com/shikhalev/rdot/downloads
+Data options:
+    -p, --preload=libs               Comma-separated list of preloading
+                                       libraries which must be hidden.
+    -i, --load, --input=libs         Comma-separated list of libraries
+                                       which must be loaded and visualized.
+    -l, --libs, --search-path=paths  Comma-separated list of paths where search
+                                       for libs by load and preload.
+
+    -e, --[no-]exclude-classes=list  Comma-separated list of classes which
+                                       should be ignored with their descendants.
+    -xlist,                          Comma-separated list of modules which
+        --[no-]exclude-namespaces      should be ignored with their namespace.
+                                     RDot, Gem, Errno & OptionParser by default,
+                                       use '--no-exclude-namespaces' to reset.
+        --[no-]exclude-files=list    Comma-separated list of files & wildcards
+                                       their methods should by ingnored.
+                                     Currect RDot location excluding by default,
+                                       use '--no-exclude-files' to reset.
+    -c, --[no-]filter-classes=list   Comma separated list of classes which only
+                                       should be visualized (with descendants).
+    -nlist,                          Comma-separated list of modules which only
+        --[no-]filter-namespaces       should be visualized (with nested).
+        --[no-]filter-global         Filter classes and modules only in global
+                                       namespace.
+        --[no-]filter-files=list     Comma-separated list of files & wildcards
+                                       their methods only should by processed.
+
+Diagram options:
+    -C, --[no-]hide-constants        Ignore constants in classes & modules.
+    -M, --[no-]hide-methods          Ignore methods & attributes.
+    -G, --[no-]hide-arguments        Don't show methods' arguments.
+    -X, --[no-]hide-included         Don't show 'include' links.
+    -E, --[no-]hide-extended         Don't show 'extend' links.
+    -N, --[no-]hide-nested           Don't show nesting links
+
+    -S, --[no-]show-private          Show private & protected methods.
+    -s, --[no-]show-protected        Show protected methods.
+    -P, --[no-]show-preloaded        Show preloaded classes & modules.
+
+        --[no-]select-attributes     Show attributes with access rights
+                                       instead getters & setters as methods.
+                                     True by default.
+
+Graph options:
+    -T, --title=title                Graph title.
+                                       'RDot Graph' by default.
+
+        --title-font=name            Font name for the graph title.
+                                       'sans-serif' by default.
+        --title-size=size            Font size for the graph title (pt).
+                                       24 by default.
+        --font=name                  Font name for main text.
+                                       'monospace' by default.
+        --font-size=size             Font size for main text (pt).
+                                       9 by default.
+
+Colors:
+  May by RGB value or name from X11 scheme
+  see http://graphviz.org/content/color-names#x11.
+        --color-class=color          Background color of class title.
+                                       #BBFFBB by default.
+        --color-class-preloaded=color
+                                     Background color of preloaded class title.
+                                       #CCEECC by default.
+        --color-class-core=core      Background color of core class title.
+                                       #DDFF99 by default.

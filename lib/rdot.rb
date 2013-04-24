@@ -77,11 +77,6 @@ module RDot
 
   class << self
 
-    def init
-      @preset = []
-      ObjectSpace.each_object(Module) { |m| @preset << m if m != ::RDot }
-    end
-
     # @api ignore
     def register_attribute mod, scope, names, access, source
       @attributes ||= {}
@@ -164,21 +159,25 @@ module RDot
         acc[scope][visibility][:attributes] ||= {}
         acc[scope][visibility][:attributes][nm] = obj
       else
-        ltr = 'a'
-        obj[:signature] = name.to_s + '(' + m.parameters.map do |q, n|
-          nm = n || ltr
-          ltr = ltr.succ
-          case q
-          when :req
-            nm
-          when :opt
-            "#{nm} = <def>"
-          when :rest
-            "*#{nm}"
-          when :block
-            "&#{nm}"
-          end
-        end.join(', ') + ')'
+        if ! opts[:hide_arguments]
+          ltr = 'a'
+          obj[:signature] = name.to_s + '(' + m.parameters.map do |q, n|
+            nm = n || ltr
+            ltr = ltr.succ
+            case q
+            when :req
+              nm
+            when :opt
+              "#{nm} = <…>"
+            when :rest
+              "*#{nm}"
+            when :block
+              "&#{nm}"
+            end
+          end.join(', ') + ')'
+        else
+          obj[:signature] = name.to_s + '()'
+        end
         acc[scope][visibility][:methods] ||= {}
         acc[scope][visibility][:methods][name] = obj
       end
@@ -563,7 +562,7 @@ module RDot
     end
 
     def dot_module space, name, m, opts
-      if @processed.include? m[:module]
+      if @processed.include?(m[:module])
         return nil
       else
         @processed << m[:module]
@@ -583,7 +582,7 @@ module RDot
           ext = find_module space, e
           result << dot_module(space, e, ext, opts)
           @extended << node_name(e) + ' -> ' + node_name(name) +
-            '[color="' + opts[:color_extended] + '", weight=1];'
+            '[color="' + opts[:color_extended] + '", weight=1, minlen=0];'
         end
       end
       if ! opts[:hide_included]
@@ -593,7 +592,7 @@ module RDot
           result << dot_module(space, i, inc, opts)
           @included << node_name(inc[:module].inspect) + ' -> ' +
               node_name(name) +
-            '[color="' + opts[:color_included] + '", weight=1];'
+            '[color="' + opts[:color_included] + '", weight=1, minlen=0];'
         end
       end
       if m[:superclass]
@@ -653,16 +652,8 @@ module RDot
 
   end
 
-end
-
-RDot.init
-
-module RDot
-
-  class << self
-
-    private :init
-
-  end
+  @preset = []
+  ObjectSpace.each_object(Module) { |m| @preset << m if m != ::RDot }
 
 end
+
