@@ -209,7 +209,10 @@ module RDot
         result[:constants] = {}
         mod.constants(false).each do |c|
           next if mod == Object && c == :Config
-          result[:constants][c] = mod.const_get(c).class.inspect
+          begin
+            result[:constants][c] = mod.const_get(c).class.inspect
+          rescue
+          end
         end
       end
       if ! opts[:hide_methods]
