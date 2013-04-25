@@ -73,7 +73,7 @@ $module_hook_end = __LINE__
 
 module RDot
 
-  VERSION = '0.10.4'
+  VERSION = '0.10.5'
 
   class << self
 
