@@ -565,6 +565,10 @@ module RDot
     end
 
     def dot_module space, name, m, opts
+      if m == nil
+        $stderr.puts "Warning: nil module by name \"#{name}\"!"
+        return nil
+      end
       if @processed.include?(m[:module])
         return nil
       else
@@ -578,14 +582,14 @@ module RDot
         ns = find_module space, m[:nested]
         result << dot_module(space, m[:nested], ns, opts)
         @nested << node_name(m[:nested]) + ' -> ' + node_name(name) +
-            '[color="' + opts[:color_nested] + '", weight=1000, minlen=0];'
+            '[color="' + opts[:color_nested] + '", weight=1, minlen=-10];'
       end
       if ! opts[:hide_extended]
         m[:extended].each do |e|
           ext = find_module space, e
           result << dot_module(space, e, ext, opts)
           @extended << node_name(e) + ' -> ' + node_name(name) +
-            '[color="' + opts[:color_extended] + '", weight=1, minlen=0];'
+            '[color="' + opts[:color_extended] + '", weight=2, minlen=-2];'
         end
       end
       if ! opts[:hide_included]
@@ -595,7 +599,7 @@ module RDot
           result << dot_module(space, i, inc, opts)
           @included << node_name(inc[:module].inspect) + ' -> ' +
               node_name(name) +
-            '[color="' + opts[:color_included] + '", weight=1, minlen=0];'
+            '[color="' + opts[:color_included] + '", weight=2, minlen=-2];'
         end
       end
       if m[:superclass]
@@ -629,7 +633,8 @@ module RDot
       result << '  ];'
       result << '  edge['
       result << '    dir=back,'
-      result << '    arrowtail=vee'
+      result << '    arrowtail=vee,'
+      result << '    penwidth=0.5, arrowsize=0.7'
       result << '  ];'
       @processed = []
       @nested = []
