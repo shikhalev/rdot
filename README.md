@@ -1,9 +1,15 @@
 # RDot — GraphViz diagrams for Ruby classes
 
-## Usage
-    rdot [options] <libs>
+## About
 
-### Service options
+* Author: [Ivan Shikhalev](https://github.com/shikhalev)
+* License: {file:LICENSE.md GNU GPL}
+* [Project](https://github.com/shikhalev/rdot) @ [GitHub](https://github.com/).
+
+## Command-line help
+    Usage: rdot [options] <libs>
+
+    Service options:
         -h, --help                       Show short help and exit.
         -?, --usage                      Show usage info and exit.
         -B, --about                      Show about string and exit.
@@ -23,7 +29,7 @@
                                            'rdot.dot' if empty.
             --stdout                     Reset output to STDOUT.
 
-### Data options
+    Data options:
         -p, --preload=libs               Comma-separated list of preloading
                                            libraries which must be hidden.
         -i, --load, --input=libs         Comma-separated list of libraries
@@ -50,41 +56,66 @@
             --[no-]filter-files=list     Comma-separated list of files & wildcards
                                            their methods only should by processed.
 
-### Diagram options
-    -C, --[no-]hide-constants        Ignore constants in classes & modules.
-    -M, --[no-]hide-methods          Ignore methods & attributes.
-    -G, --[no-]hide-arguments        Don't show methods' arguments.
-    -X, --[no-]hide-included         Don't show 'include' links.
-    -E, --[no-]hide-extended         Don't show 'extend' links.
-    -N, --[no-]hide-nested           Don't show nesting links
+    Diagram options:
+        -C, --[no-]hide-constants        Ignore constants in classes & modules.
+        -M, --[no-]hide-methods          Ignore methods & attributes.
+        -G, --[no-]hide-arguments        Don't show methods' arguments.
+        -X, --[no-]hide-included         Don't show 'include' links.
+        -E, --[no-]hide-extended         Don't show 'extend' links.
+        -N, --[no-]hide-nested           Don't show nesting links
 
-    -S, --[no-]show-private          Show private & protected methods.
-    -s, --[no-]show-protected        Show protected methods.
-    -P, --[no-]show-preloaded        Show preloaded classes & modules.
+        -S, --[no-]show-private          Show private & protected methods.
+        -s, --[no-]show-protected        Show protected methods.
+        -P, --[no-]show-preloaded        Show preloaded classes & modules.
 
-        --[no-]select-attributes     Show attributes with access rights
-                                       instead getters & setters as methods.
-                                     True by default.
+            --[no-]select-attributes     Show attributes with access rights
+                                           instead getters & setters as methods.
+                                         True by default.
 
-### Graphic options
-    -T, --title=title                Graph title.
-                                       'RDot Graph' by default.
+    Graph options:
+        -T, --title=title                Graph title.
+                                           'RDot Graph' by default.
 
-        --title-font=name            Font name for the graph title.
-                                       'sans-serif' by default.
-        --title-size=size            Font size for the graph title (pt).
-                                       24 by default.
-        --font=name                  Font name for main text.
-                                       'monospace' by default.
-        --font-size=size             Font size for main text (pt).
-                                       9 by default.
-
-        --color-class=color          Background color of class title.
-                                       #BBFFBB by default.
-                                     RGB value or name from X11 scheme (see
-                                       http://graphviz.org/content/color-names).
-        --color-class-preloaded=color
-                                     Background color of preloaded class title.
-                                       #CCEECC by default.
-        --color-class-core=core      Background color of core class title.
-                                       #DDFF99 by default.
+            --title-font=name            Font name for the graph title.
+                                           'sans-serif' by default.
+            --title-size=size            Font size for the graph title (pt).
+                                           24 by default.
+            --font=name                  Font name for main text.
+                                           'monospace' by default.
+            --font-size=size             Font size for main text (pt).
+                                           9 by default.
+    Colors:
+      May by RGB value or name from X11 scheme,
+      see http://graphviz.org/content/color-names#x11.
+            --color-class=color          Background color of class title.
+                                           #BBFFBB by default.
+            --color-class-preloaded=color
+                                         Background color of preloaded class title.
+                                           #CCEECC by default.
+            --color-class-core=color     Background color of core class title.
+                                           #DDFF99 by default.
+            --color-exception=color      Background color of exception title.
+                                           #FFBBBB by default.
+            --color-exception-preloaded=color
+                                         Background color of preloaded exception
+                                           title.
+                                           #EECCCC by default.
+            --color-exception-core=color Background color of core exception title.
+                                           #FFDD99 by default.
+            --color-module=color         Background color of module title.
+                                           #BBBBFF by default.
+            --color-module-preloaded=color
+                                         Background color of preloaded module title.
+                                           #CCCCEE by default.
+            --color-protected=color      Background color for protected methods.
+                                           #EEEEEE by default.
+            --color-private=color        Background color for private methods.
+                                           #DDDDDD by default.
+            --color-inherited=color      Color for inheritance links.
+                                           #0000FF by default.
+            --color-included=color       Color for 'include' links.
+                                           #00AAFF by default.
+            --color-extended=color       Color for 'extend' links.
+                                           #AA00FF by default.
+            --color-nested=color         Color for nesting links.
+                                           #EEEEEE by default.

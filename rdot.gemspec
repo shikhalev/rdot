@@ -16,4 +16,5 @@ Gem::Specification.new do |g|
   g.executables = ['rdot']
   g.require_path = 'lib'
   g.required_ruby_version = '>= 1.9.2'
+  g.add_dependency 'is-monkey'
 end

@@ -11,7 +11,7 @@ options = {
   :load => [],
   :exclude_classes => [],
   :exclude_namespaces => [RDot, Gem, Errno, OptionParser],
-  :exclude_files => [RDot.method(:dot).source_location[0]],
+  :exclude_files => [RDot.method(:dot).source_location[0], __FILE__],
   :select_attributes => true
 }
 
@@ -41,8 +41,6 @@ license = <<-TXT
 #{hi('License:')} GNU GPL (General Public License)
     http://gnu.org/licenses/gpl.html
 TXT
-
-require 'pp'
 
 opts = OptionParser.new(usage) do |o|
 
@@ -361,34 +359,84 @@ opts = OptionParser.new(usage) do |o|
     options[:color_class] = value
   end
 
-  o.on '--color-class-preloaded', '=color',
+  o.on '--color-class-preloaded', '=color', String,
       'Background color of preloaded class title.',
       "  #{RDot::defaults[:color_class_preloaded]} by default." do |value|
     options[:color_class_preloaded] = value
   end
 
-  o.on '--color-class-core', '=core', 'Background color of core class title.',
+  o.on '--color-class-core', '=color', String,
+      'Background color of core class title.',
       "  #{RDot::defaults[:color_class_core]} by default." do |value|
     options[:color_class_core] = value
   end
 
-end
+  o.on '--color-exception', '=color', String,
+      'Background color of exception title.',
+      "  #{RDot::defaults[:color_exception]} by default." do |value|
+    options[:color_exception] = value
+  end
 
-#         :color_class                    => '#BBFFBB',
-#         :color_class_preloaded          => '#CCEECC',
-#         :color_class_core               => '#DDFF99',
-#         :color_exception                => '#FFBBBB',
-#         :color_exception_preloaded      => '#EECCCC',
-#         :color_exception_core           => '#FFDD99',
-#         :color_module                   => '#BBBBFF',
-#         :color_module_preloaded         => '#CCCCEE',
-#         :color_module_core              => '#99DDFF',
-#         :color_protected                => '#EEEEEE',
-#         :color_private                  => '#DDDDDD',
-#         :color_inherited                => '#0000FF',
-#         :color_included                 => '#00AAFF',
-#         :color_extended                 => '#AA00FF',
-#         :color_nested                   => '#EEEEEE'
+  o.on '--color-exception-preloaded', '=color', String,
+      'Background color of preloaded exception', '  title.',
+      "  #{RDot::defaults[:color_exception_preloaded]} by default." do |value|
+    options[:color_exception_preloaded] = value
+  end
+
+  o.on '--color-exception-core', '=color', String,
+      'Background color of core exception title.',
+      "  #{RDot::defaults[:color_exception_core]} by default." do |value|
+    options[:color_exception_core] = value
+  end
+
+  o.on '--color-module', '=color', String, 'Background color of module title.',
+      "  #{RDot::defaults[:color_module]} by default." do |value|
+    options[:color_module] = value
+  end
+
+  o.on '--color-module-preloaded', '=color', String,
+      'Background color of preloaded module title.',
+      "  #{RDot::defaults[:color_module_preloaded]} by default." do |value|
+    options[:color_module_preloaded] = value
+  end
+
+  o.on '--color-protected', '=color', String,
+      'Background color for protected methods.',
+      "  #{RDot::defaults[:color_protected]} by default." do |value|
+    options[:color_protected] = value
+  end
+
+  o.on '--color-private', '=color', String,
+      'Background color for private methods.',
+      "  #{RDot::defaults[:color_private]} by default." do |value|
+    options[:color_private] = value
+  end
+
+  o.on '--color-inherited', '=color', String,
+      'Color for inheritance links.',
+      "  #{RDot::defaults[:color_inherited]} by default." do |value|
+    options[:color_inherited] = value
+  end
+
+  o.on '--color-included', '=color', String,
+      'Color for \'include\' links.',
+      "  #{RDot::defaults[:color_included]} by default." do |value|
+    options[:color_included] = value
+  end
+
+  o.on '--color-extended', '=color', String,
+      'Color for \'extend\' links.',
+      "  #{RDot::defaults[:color_extended]} by default." do |value|
+    options[:color_extended] = value
+  end
+
+  o.on '--color-nested', '=color', String,
+      'Color for nesting links.',
+      "  #{RDot::defaults[:color_nested]} by default." do |value|
+    options[:color_nested] = value
+  end
+
+end
 
 begin
   options[:load] += opts.order ARGV
@@ -396,4 +444,30 @@ rescue
   raise 'Error while processing command line.'
 end
 
-pp options
+if options[:load].include?('rdot')
+  options[:exclude_namespaces].delete RDot
+  options[:exclude_files].delete RDot.method(:dot).source_location[0]
+end
+if options[:load].include?('optparse')
+  options[:exclude_namespaces].delete OptionParser
+end
+
+if options[:preload]
+  options[:preload].each do |l|
+    require l
+  end
+end
+
+pre = RDot.snapshot options
+
+if options[:load]
+  options[:load].each do |l|
+    require l
+  end
+end
+
+post = RDot.snapshot options
+
+delta = RDot.diff post, pre, options
+
+options[:output].puts RDot.dot(delta, options)
