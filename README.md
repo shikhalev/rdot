@@ -4,7 +4,10 @@
 
 * Author: [Ivan Shikhalev](https://github.com/shikhalev)
 * License: {file:LICENSE.md GNU GPL}
-* [Project](https://github.com/shikhalev/rdot) @ [GitHub](https://github.com/).
+* [Project](https://github.com/shikhalev/rdot) @ [GitHub.com](https://github.com/)
+* [Gem](https://rubygems.org/gems/rdot) @ [RubyGems.org](https://rubygems.org)
+* [Documentation](http://rubydoc.info/github/shikhalev/rdot/frames/)
+@ [RubyDoc.info](http://rubydoc.info/)
 
 ## Command-line help
     Usage: rdot [options] <libs>
@@ -85,7 +88,7 @@
             --font-size=size             Font size for main text (pt).
                                            9 by default.
     Colors:
-      May by RGB value or name from X11 scheme,
+      May be RGB value or name from X11 scheme,
       see http://graphviz.org/content/color-names#x11.
             --color-class=color          Background color of class title.
                                            #BBFFBB by default.
