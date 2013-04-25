@@ -4,7 +4,7 @@ require './lib/rdot'
 
 Gem::Specification.new do |g|
   g.name = 'rdot'
-  g.version = RDot::VERSION + '.1'
+  g.version = RDot::VERSION
   g.summary = 'GraphViz class diagrams for Ruby'
   g.author = 'Ivan Shikhalev'
   g.email = 'shikhalev@gmail.com'

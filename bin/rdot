@@ -439,7 +439,21 @@ opts = OptionParser.new(usage) do |o|
 end
 
 begin
-  options[:load] += opts.order ARGV
+  [
+    '/etc/rdocopts',
+    File.expand_path('~/.config/rdocopts'),
+    File.expand_path('./.rdocopts')
+  ].each do |f|
+    if File.exists? f
+      opts.load f
+    end
+  end
+rescue
+  raise 'Error while processing options file.'
+end
+
+begin
+  options[:load] += opts.parse ARGV
 rescue
   raise 'Error while processing command line.'
 end
