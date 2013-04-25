@@ -440,9 +440,9 @@ end
 
 begin
   [
-    '/etc/rdocopts',
-    File.expand_path('~/.config/rdocopts'),
-    File.expand_path('./.rdocopts')
+    '/etc/rdotopts',
+    File.expand_path('~/.config/rdotopts'),
+    File.expand_path('./.rdotopts')
   ].each do |f|
     if File.exists? f
       opts.load f
