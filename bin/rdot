@@ -157,6 +157,7 @@ opts = OptionParser.new(usage) do |o|
   o.on '-l', '--libs', '--search-path', '=paths', Array,
       'Comma-separated list of paths where search',
       '  for libs by load and preload.' do |value|
+    $:.push *(value.map { |d| File.expand_path(d) })
   end
 
   o.separator ''
