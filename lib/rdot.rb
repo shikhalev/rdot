@@ -73,7 +73,7 @@ $module_hook_end = __LINE__
 
 module RDot
 
-  VERSION = '0.10.6'
+  VERSION = '0.10.7'
 
   class << self
 
@@ -209,9 +209,12 @@ module RDot
         result[:constants] = {}
         mod.constants(false).each do |c|
           next if mod == Object && c == :Config
-          begin
+          if (auto = mod.autoload?(c))
+            result[:constants][c] = 'auto:' + get_file(auto)
+          elsif mod.const_defined? c
             result[:constants][c] = mod.const_get(c).class.inspect
-          rescue
+          else
+            result[:constants][c] = 'undefined'
           end
         end
       end
