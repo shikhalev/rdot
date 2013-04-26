@@ -73,7 +73,7 @@ $module_hook_end = __LINE__
 
 module RDot
 
-  VERSION = '0.10.5'
+  VERSION = '0.10.6'
 
   class << self
 
@@ -581,15 +581,13 @@ module RDot
       if m[:nested] && ! opts[:hide_nested]
         ns = find_module space, m[:nested]
         result << dot_module(space, m[:nested], ns, opts)
-        @nested << node_name(m[:nested]) + ' -> ' + node_name(name) +
-            '[color="' + opts[:color_nested] + '", weight=1, minlen=-10];'
+        @nested << node_name(m[:nested]) + ' -> ' + node_name(name) + ';'
       end
       if ! opts[:hide_extended]
         m[:extended].each do |e|
           ext = find_module space, e
           result << dot_module(space, e, ext, opts)
-          @extended << node_name(e) + ' -> ' + node_name(name) +
-            '[color="' + opts[:color_extended] + '", weight=2, minlen=-2];'
+          @extended << node_name(e) + ' -> ' + node_name(name) + ';'
         end
       end
       if ! opts[:hide_included]
@@ -597,16 +595,13 @@ module RDot
           next if m[:module].name == 'CMath' && i == 'Math'
           inc = find_module space, i
           result << dot_module(space, i, inc, opts)
-          @included << node_name(inc[:module].inspect) + ' -> ' +
-              node_name(name) +
-            '[color="' + opts[:color_included] + '", weight=2, minlen=-2];'
+          @included << node_name(i) + ' -> ' + node_name(name) + ';'
         end
       end
       if m[:superclass]
         spc = find_module space, m[:superclass]
         result << dot_module(space, m[:superclass], spc, opts)
-        @inherited << node_name(m[:superclass]) + ' -> ' + node_name(name) +
-            '[color="' + opts[:color_inherited] + '", weight=10];'
+        @inherited << node_name(m[:superclass]) + ' -> ' + node_name(name) + ';'
       end
       result.join "\n  "
     end
@@ -621,7 +616,7 @@ module RDot
       result << '  graph['
       result << '    rankdir=LR,'
       result << '    splines=true,'
-      result << '    labelloc=t,'
+      result << '    labelloc=t, mclimim=10,'
       result << '    fontname="' + opts[:graph_fontname] + '",'
       result << '    fontsize=' + opts[:graph_fontsize].to_s + ','
       result << '    label="' + opts[:graph_label] + '"'
@@ -645,10 +640,38 @@ module RDot
         mm = dot_module space, n, m, opts
         result << '  ' + mm if mm
       end
-      result << '  ' + @nested.join("\n  ")
-      result << '  ' + @included.join("\n  ")
-      result << '  ' + @extended.join("\n  ")
-      result << '  ' + @inherited.join("\n  ")
+      result << '  subgraph subNested{'
+      result << '    edge['
+      result << '      color="' + opts[:color_nested] + '",'
+      result << '      weight=10,'
+      result << '      minlen=-1'
+      result << '    ];'
+      result << '    ' + @nested.join("\n    ")
+      result << '  }'
+      result << '  subgraph subExtended{'
+      result << '    edge['
+      result << '      color="' + opts[:color_extended] + '",'
+      result << '      weight=1,'
+      result << '      minlen=0'
+      result << '    ];'
+      result << '    ' + @extended.join("\n    ")
+      result << '  }'
+      result << '  subgraph subIncluded{'
+      result << '    edge['
+      result << '      color="' + opts[:color_included] + '",'
+      result << '      weight=2,'
+      result << '      minlen=1'
+      result << '    ];'
+      result << '    ' + @included.join("\n    ")
+      result << '  }'
+      result << '  subgraph subInherited{'
+      result << '    edge['
+      result << '      color="' + opts[:color_inherited] + '",'
+      result << '      weight=10,'
+      result << '      minlen=1'
+      result << '    ];'
+      result << '    ' + @inherited.join("\n    ")
+      result << '  }'
       result << '}'
       result.join "\n"
     end

@@ -12,6 +12,19 @@
 ## Command-line help
     Usage: rdot [options] <libs>
 
+    Note:
+        --                               Stop options parsing, rest of line treated
+                                           as <libs>.
+                                         If it's a FIRST argument, the 'optparse'
+                                           should not be loaded (include config
+                                           files), no options will be parsed, all
+                                           values will be default. And we can make
+                                           graph of 'optparse'.
+    Config files:
+        /etc/rdotopts
+        ~/.config/rdotopts
+        ./.rdotopts
+
     Service options:
         -h, --help                       Show short help and exit.
         -?, --usage                      Show usage info and exit.

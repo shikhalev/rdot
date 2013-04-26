@@ -3,14 +3,13 @@
 
 require 'is/monkey/sandbox'
 require 'rdot'
-require 'optparse'
 
 options = {
   :output => $stdout,
   :preload => [],
   :load => [],
   :exclude_classes => [],
-  :exclude_namespaces => [RDot, Gem, Errno, OptionParser],
+  :exclude_namespaces => [RDot, Gem, Errno],
   :exclude_files => [RDot.method(:dot).source_location[0], __FILE__],
   :select_attributes => true
 }
@@ -42,429 +41,463 @@ license = <<-TXT
     http://gnu.org/licenses/gpl.html
 TXT
 
-opts = OptionParser.new(usage) do |o|
+if ARGV[0] == '--'
 
-  o.separator ''
-  o.separator hi('Service options:')
+  ARGV.shift
+  options[:load] += ARGV
 
-  o.on '-h', '--help', 'Show short help and exit.' do
-    puts title
-    puts
-    puts opts.help
-    exit 0
-  end
+else
 
-  o.on '-?', '--usage', 'Show usage info and exit.' do
-    puts opts.help
-    exit 0
-  end
+  require 'optparse'
 
-  o.on '-B', '--about', 'Show about string and exit.' do
-    puts title
-    exit 0
-  end
+  options[:exclude_namespaces] << OptionParser
 
-  o.on '-A', '--author', 'Show author and contact info and exit.' do
-    puts author
-    exit 0
-  end
+  opts = OptionParser.new(usage) do |o|
 
-  o.on '-L', '--license', 'Show info about license and exit.' do
-    puts license
-    exit 0
-  end
+    o.separator ''
+    o.separator hi('Note:')
+    o.separator '    --                               ' +
+        'Stop options parsing, rest of line treated'
+    o.separator '                                     ' +
+        '  as <libs>.'
+    o.separator '                                     ' +
+        'If it\'s a FIRST argument, the \'optparse\''
+    o.separator '                                     ' +
+        '  should not be loaded (include config'
+    o.separator '                                     ' +
+        '  files), no options will be parsed, all'
+    o.separator '                                     ' +
+        '  values will be default. And we can make'
+    o.separator '                                     ' +
+        '  graph of \'optparse\'.'
+    o.separator hi('Config files:')
+    o.separator '    /etc/rdotopts'
+    o.separator '    ~/.config/rdotopts'
+    o.separator '    ./.rdotopts'
 
-  o.on '-V', '--version', 'Show version number and exit.' do
-    puts RDot::VERSION
-    exit 0
-  end
+    o.separator ''
+    o.separator hi('Service options:')
 
-  o.on '-I', '--info', '=[info]', Array, 'Show some information and exit.',
-      'Argument may be comma-separated set of:',
-      '  about, author, license, usage, version;',
-      'or one of presets:',
-      '  help = about + usage,',
-      '  info (or no argument) =',
-      '               about + author + license,',
-      '  all = about + author + license + usage.' do |value|
-    if value == nil || value == []
-      value = ['info']
+    o.on '-h', '--help', 'Show short help and exit.' do
+      puts title
+      puts
+      puts opts.help
+      exit 0
     end
-    case value[0]
-    when 'help'
-      value = ['about', 'usage']
-    when 'info'
-      value = ['about', 'author', 'license']
-    when 'all'
-      value = ['about', 'author', 'license', 'usage']
-    when 'version'
+
+    o.on '-?', '--usage', 'Show usage info and exit.' do
+      puts opts.help
+      exit 0
+    end
+
+    o.on '-B', '--about', 'Show about string and exit.' do
+      puts title
+      exit 0
+    end
+
+    o.on '-A', '--author', 'Show author and contact info and exit.' do
+      puts author
+      exit 0
+    end
+
+    o.on '-L', '--license', 'Show info about license and exit.' do
+      puts license
+      exit 0
+    end
+
+    o.on '-V', '--version', 'Show version number and exit.' do
       puts RDot::VERSION
       exit 0
     end
-    if value.include? 'about'
-      puts title
-      if value.include?('author') || value.include?('license') ||
-          value.include?('usage')
-        puts
+
+    o.on '-I', '--info', '=[info]', Array,
+        'Show some information and exit.',
+        'Argument may be comma-separated set of:',
+        '  about, author, license, usage, version;',
+        'or one of presets:',
+        '  help = about + usage,',
+        '  info (or no argument) =',
+        '               about + author + license,',
+        '  all = about + author + license + usage.' do |value|
+      if value == nil || value == []
+        value = ['info']
       end
-    end
-    if value.include? 'author'
-      puts author
-      if value.include?('usage') && ! value.include?('license')
-        puts
+      case value[0]
+      when 'help'
+        value = ['about', 'usage']
+      when 'info'
+        value = ['about', 'author', 'license']
+      when 'all'
+        value = ['about', 'author', 'license', 'usage']
+      when 'version'
+        puts RDot::VERSION
+        exit 0
       end
-    end
-    if value.include? 'license'
-      puts license
-      if value.include?('usage')
-        puts
+      if value.include? 'about'
+        puts title
+        if value.include?('author') || value.include?('license') ||
+                                                      value.include?('usage')
+          puts
+        end
       end
+      if value.include? 'author'
+        puts author
+        if value.include?('usage') && ! value.include?('license')
+          puts
+        end
+      end
+      if value.include? 'license'
+        puts license
+        if value.include?('usage')
+          puts
+        end
+      end
+      if value.include? 'usage'
+        puts opts.help
+      end
+      exit 0
     end
-    if value.include? 'usage'
-      puts opts.help
+
+    o.separator ''
+
+    o.on '-o', '--output', '=[file]', String,
+        'File for output instead STDOUT.',
+        '  \'rdot.dot\' if empty.' do |value|
+      if value == nil
+        value = 'rdot.dot'
+      end
+      options[:output] = File.open value, 'w'
     end
-    exit 0
-  end
 
-  o.separator ''
+    o.on '--stdout', 'Reset output to STDOUT.'
 
-  o.on '-o', '--output', '=[file]', String,
-      'File for output instead STDOUT.',
-      '  \'rdot.dot\' if empty.' do |value|
-    if value == nil
-      value = 'rdot.dot'
+    o.separator ''
+    o.separator hi('Data options:')
+
+    o.on '-p', '--preload', '=libs', Array,
+        'Comma-separated list of preloading',
+        '  libraries which must be hidden.' do |value|
+      options[:preload] += value
     end
-    options[:output] = File.open value, 'w'
-  end
 
-  o.on '--stdout', 'Reset output to STDOUT.'
+    o.on '-i', '--load', '--input', '=libs', Array,
+        'Comma-separated list of libraries',
+        '  which must be loaded and visualized.' do |value|
+      options[:load] += value
+    end
 
-  o.separator ''
-  o.separator hi('Data options:')
+    o.on '-l', '--libs', '--search-path', '=paths', Array,
+                 'Comma-separated list of paths where search',
+                 '  for libs by load and preload.' do |value|
+      $:.push *(value.map { |d| File.expand_path(d) })
+    end
 
-  o.on '-p', '--preload', '=libs', Array,
-      'Comma-separated list of preloading',
-      '  libraries which must be hidden.' do |value|
-    options[:preload] += value
-  end
+    o.separator ''
 
-  o.on '-i', '--load', '--input', '=libs', Array,
-      'Comma-separated list of libraries',
-      '  which must be loaded and visualized.' do |value|
-    options[:load] += value
-  end
-
-  o.on '-l', '--libs', '--search-path', '=paths', Array,
-      'Comma-separated list of paths where search',
-      '  for libs by load and preload.' do |value|
-    $:.push *(value.map { |d| File.expand_path(d) })
-  end
-
-  o.separator ''
-
-  o.on '-e', '--[no-]exclude-classes', '=list', Array,
-      'Comma-separated list of classes which',
-      '  should be ignored with their descendants.' do |value|
-    if ! value
-      options[:exclude_classes] = []
-    else
-      value.each do |v|
-        c = sandbox { eval v }
-        if Class === c
-          options[:exclude_classes] << c
+    o.on '-e', '--[no-]exclude-classes', '=list', Array,
+                 'Comma-separated list of classes which',
+                 '  should be ignored with their descendants.' do |value|
+      if ! value
+        options[:exclude_classes] = []
+      else
+        value.each do |v|
+          c = sandbox { eval v }
+          if Class === c
+            options[:exclude_classes] << c
+          end
         end
       end
     end
-  end
 
-  o.on '-x', '--[no-]exclude-namespaces', '=list', Array,
-      'Comma-separated list of modules which',
-      '  should be ignored with their namespace.',
-      'RDot, Gem, Errno & OptionParser by default,',
-      '  use \'--no-exclude-namespaces\' to reset.' do |value|
-    if ! value
-      options[:exclude_namespaces] = []
-    else
-      value.each do |v|
-        m = sandbox { eval v }
-        if Module === m
-          options[:exclude_namespaces] << m
+    o.on '-x', '--[no-]exclude-namespaces', '=list', Array,
+        'Comma-separated list of modules which',
+        '  should be ignored with their namespace.',
+        'RDot, Gem, Errno & OptionParser by default,',
+        '  use \'--no-exclude-namespaces\' to reset.' do |value|
+      if ! value
+        options[:exclude_namespaces] = []
+      else
+        value.each do |v|
+          m = sandbox { eval v }
+          if Module === m
+            options[:exclude_namespaces] << m
+          end
         end
       end
     end
-  end
 
-  o.on '--[no-]exclude-files', '=list', Array,
-      'Comma-separated list of files & wildcards',
-      '  their methods should by ingnored.',
-      'Currect RDot location excluding by default,',
-      '  use \'--no-exclude-files\' to reset.' do |value|
-    if ! value
-      options[:exclude_files] = []
-    else
-      value.each do |v|
-        options[:exclude_files] += Dir[v]
-      end
-    end
-  end
-
-  o.on '-c', '--[no-]filter-classes', '=list', Array,
-      'Comma separated list of classes which only',
-      '  should be visualized (with descendants).' do |value|
-    if ! value
-      options.delete :filter_classes
-    else
-      options[:filter_classes] ||= []
-      value.each do |v|
-        c = sandbox { eval v }
-        if Class === c
-          options[:filter_classes] << c
+    o.on '--[no-]exclude-files', '=list', Array,
+        'Comma-separated list of files & wildcards',
+        '  their methods should by ingnored.',
+        'Currect RDot location excluding by default,',
+        '  use \'--no-exclude-files\' to reset.' do |value|
+      if ! value
+        options[:exclude_files] = []
+      else
+        value.each do |v|
+          options[:exclude_files] += Dir[v]
         end
       end
     end
-  end
 
-  o.on '-n', '--[no-]filter-namespaces', '=list', Array,
-      'Comma-separated list of modules which only',
-      '  should be visualized (with nested).' do |value|
-    if ! value
-      options.delete :filter_namespaces
-    else
-      options[:filter_namespaces] ||= []
-      value.each do |v|
-        m = sandbox { eval v }
-        if Module === m
-          options[:filter_namespaces] << m
+    o.on '-c', '--[no-]filter-classes', '=list', Array,
+        'Comma separated list of classes which only',
+        '  should be visualized (with descendants).' do |value|
+      if ! value
+        options.delete :filter_classes
+      else
+        options[:filter_classes] ||= []
+        value.each do |v|
+          c = sandbox { eval v }
+          if Class === c
+            options[:filter_classes] << c
+          end
         end
       end
     end
-  end
 
-  o.on '--[no-]filter-global', TrueClass,
-      'Filter classes and modules only in global',
-      '  namespace.' do |value|
-    options[:filter_global] = value
-  end
-
-  o.on '--[no-]filter-files', '=list', Array, 'Comma-separated list of files & wildcards',
-      '  their methods only should by processed.' do |value|
-    if ! value
-      options.delete :filter_files
-    else
-      options[:filter_files] ||= []
-      value.each do |v|
-        options[:filter_files] += Dir[v]
+    o.on '-n', '--[no-]filter-namespaces', '=list', Array,
+        'Comma-separated list of modules which only',
+        '  should be visualized (with nested).' do |value|
+      if ! value
+        options.delete :filter_namespaces
+      else
+        options[:filter_namespaces] ||= []
+        value.each do |v|
+          m = sandbox { eval v }
+          if Module === m
+            options[:filter_namespaces] << m
+          end
+        end
       end
     end
-  end
 
-  o.separator ''
-  o.separator hi('Diagram options:')
+    o.on '--[no-]filter-global', TrueClass,
+        'Filter classes and modules only in global',
+        '  namespace.' do |value|
+      options[:filter_global] = value
+    end
 
-  o.on '-C', '--[no-]hide-constants', TrueClass,
-      'Ignore constants in classes & modules.' do |value|
-    options[:hide_constants] = value
-  end
+    o.on '--[no-]filter-files', '=list', Array,
+        'Comma-separated list of files & wildcards',
+        '  their methods only should by processed.' do |value|
+      if ! value
+        options.delete :filter_files
+      else
+        options[:filter_files] ||= []
+        value.each do |v|
+          options[:filter_files] += Dir[v]
+        end
+      end
+    end
 
-  o.on '-M', '--[no-]hide-methods', TrueClass,
-      'Ignore methods & attributes.' do |value|
-    options[:hide_methods] = value
-  end
+    o.separator ''
+    o.separator hi('Diagram options:')
 
-  o.on '-G', '--[no-]hide-arguments', TrueClass,
-      'Don\'t show methods\' arguments.' do |value|
-    options[:hide_arguments] = value
-  end
+    o.on '-C', '--[no-]hide-constants', TrueClass,
+        'Ignore constants in classes & modules.' do |value|
+      options[:hide_constants] = value
+    end
 
-  o.on '-X', '--[no-]hide-included', TrueClass,
-      'Don\'t show \'include\' links.' do |value|
-    options[:hide_included] = value
-  end
+    o.on '-M', '--[no-]hide-methods', TrueClass,
+        'Ignore methods & attributes.' do |value|
+      options[:hide_methods] = value
+    end
 
-  o.on '-E', '--[no-]hide-extended', TrueClass,
-      'Don\'t show \'extend\' links.' do |value|
-    options[:hide_extended] = value
-  end
+    o.on '-G', '--[no-]hide-arguments', TrueClass,
+        'Don\'t show methods\' arguments.' do |value|
+      options[:hide_arguments] = value
+    end
 
-  o.on '-N', '--[no-]hide-nested', TrueClass,
-      'Don\'t show nesting links' do |value|
-    options[:hide_nested] = value
-  end
+    o.on '-X', '--[no-]hide-included', TrueClass,
+        'Don\'t show \'include\' links.' do |value|
+      options[:hide_included] = value
+    end
 
-  o.separator ''
+    o.on '-E', '--[no-]hide-extended', TrueClass,
+        'Don\'t show \'extend\' links.' do |value|
+      options[:hide_extended] = value
+    end
 
-  o.on '-S', '--[no-]show-private', TrueClass,
-      'Show private & protected methods.' do |value|
-    options[:show_private] = value
-    if value
+    o.on '-N', '--[no-]hide-nested', TrueClass,
+        'Don\'t show nesting links' do |value|
+      options[:hide_nested] = value
+    end
+
+    o.separator ''
+
+    o.on '-S', '--[no-]show-private', TrueClass,
+        'Show private & protected methods.' do |value|
+      options[:show_private] = value
+      if value
+        options[:show_protected] = value
+      end
+    end
+
+    o.on '-s', '--[no-]show-protected', TrueClass,
+        'Show protected methods.' do |value|
       options[:show_protected] = value
     end
-  end
 
-  o.on '-s', '--[no-]show-protected', TrueClass, 'Show protected methods.' do |value|
-    options[:show_protected] = value
-  end
-
-  o.on '-P', '--[no-]show-preloaded', TrueClass,
-      'Show preloaded classes & modules.' do |value|
-    options[:show_preloaded] = value
-  end
-
-  o.separator ''
-
-  o.on '--[no-]select-attributes', TrueClass,
-      'Show attributes with access rights',
-      '  instead getters & setters as methods.',
-      'True by default.' do |value|
-    options[:select_attributes] = value
-  end
-
-  o.separator ''
-  o.separator hi('Graph options:')
-
-  o.on '-T', '--title', '=title', String, 'Graph title.',
-      "  '#{RDot::defaults[:graph_label]}' by default." do |value|
-    options[:graph_label] = value
-  end
-
-  o.separator ''
-
-  o.on '--title-font', '=name', String,
-      'Font name for the graph title.',
-      "  '#{RDot::defaults[:graph_fontname]}' by default." do |value|
-    options[:graph_fontname] = value
-  end
-
-  o.on '--title-size', '=size', Numeric,
-      'Font size for the graph title (pt).',
-      "  #{RDot::defaults[:graph_fontsize]} by default." do |value|
-    options[:graph_fontsize] = value
-  end
-
-  o.on '--font', '=name', String, 'Font name for main text.',
-      "  '#{RDot::defaults[:node_fontname]}' by default." do |value|
-    options[:node_fontname] = value
-  end
-
-  o.on '--font-size', '=size', Numeric, 'Font size for main text (pt).',
-      "  #{RDot::defaults[:node_fontsize]} by default." do |value|
-    options[:node_fontsize] = value
-  end
-
-  o.separator "Colors:\n" +
-      '  May by RGB value or name from X11 scheme,' + "\n" +
-      '  see http://graphviz.org/content/color-names#x11.'
-
-  o.on '--color-class', '=color', String, 'Background color of class title.',
-      "  #{RDot::defaults[:color_class]} by default." do |value|
-    options[:color_class] = value
-  end
-
-  o.on '--color-class-preloaded', '=color', String,
-      'Background color of preloaded class title.',
-      "  #{RDot::defaults[:color_class_preloaded]} by default." do |value|
-    options[:color_class_preloaded] = value
-  end
-
-  o.on '--color-class-core', '=color', String,
-      'Background color of core class title.',
-      "  #{RDot::defaults[:color_class_core]} by default." do |value|
-    options[:color_class_core] = value
-  end
-
-  o.on '--color-exception', '=color', String,
-      'Background color of exception title.',
-      "  #{RDot::defaults[:color_exception]} by default." do |value|
-    options[:color_exception] = value
-  end
-
-  o.on '--color-exception-preloaded', '=color', String,
-      'Background color of preloaded exception', '  title.',
-      "  #{RDot::defaults[:color_exception_preloaded]} by default." do |value|
-    options[:color_exception_preloaded] = value
-  end
-
-  o.on '--color-exception-core', '=color', String,
-      'Background color of core exception title.',
-      "  #{RDot::defaults[:color_exception_core]} by default." do |value|
-    options[:color_exception_core] = value
-  end
-
-  o.on '--color-module', '=color', String, 'Background color of module title.',
-      "  #{RDot::defaults[:color_module]} by default." do |value|
-    options[:color_module] = value
-  end
-
-  o.on '--color-module-preloaded', '=color', String,
-      'Background color of preloaded module title.',
-      "  #{RDot::defaults[:color_module_preloaded]} by default." do |value|
-    options[:color_module_preloaded] = value
-  end
-
-  o.on '--color-protected', '=color', String,
-      'Background color for protected methods.',
-      "  #{RDot::defaults[:color_protected]} by default." do |value|
-    options[:color_protected] = value
-  end
-
-  o.on '--color-private', '=color', String,
-      'Background color for private methods.',
-      "  #{RDot::defaults[:color_private]} by default." do |value|
-    options[:color_private] = value
-  end
-
-  o.on '--color-inherited', '=color', String,
-      'Color for inheritance links.',
-      "  #{RDot::defaults[:color_inherited]} by default." do |value|
-    options[:color_inherited] = value
-  end
-
-  o.on '--color-included', '=color', String,
-      'Color for \'include\' links.',
-      "  #{RDot::defaults[:color_included]} by default." do |value|
-    options[:color_included] = value
-  end
-
-  o.on '--color-extended', '=color', String,
-      'Color for \'extend\' links.',
-      "  #{RDot::defaults[:color_extended]} by default." do |value|
-    options[:color_extended] = value
-  end
-
-  o.on '--color-nested', '=color', String,
-      'Color for nesting links.',
-      "  #{RDot::defaults[:color_nested]} by default." do |value|
-    options[:color_nested] = value
-  end
-
-end
-
-begin
-  [
-    '/etc/rdotopts',
-    File.expand_path('~/.config/rdotopts'),
-    File.expand_path('./.rdotopts')
-  ].each do |f|
-    if File.exists? f
-      opts.load f
+    o.on '-P', '--[no-]show-preloaded', TrueClass,
+        'Show preloaded classes & modules.' do |value|
+      options[:show_preloaded] = value
     end
-  end
-rescue
-  raise 'Error while processing options file.'
-end
 
-begin
-  options[:load] += opts.parse ARGV
-rescue
-  raise 'Error while processing command line.'
+    o.separator ''
+
+    o.on '--[no-]select-attributes', TrueClass,
+        'Show attributes with access rights',
+        '  instead getters & setters as methods.',
+        'True by default.' do |value|
+      options[:select_attributes] = value
+    end
+
+    o.separator ''
+    o.separator hi('Graph options:')
+
+    o.on '-T', '--title', '=title', String, 'Graph title.',
+        "  '#{RDot::defaults[:graph_label]}' by default." do |value|
+      options[:graph_label] = value
+    end
+
+    o.separator ''
+
+    o.on '--title-font', '=name', String,
+        'Font name for the graph title.',
+        "  '#{RDot::defaults[:graph_fontname]}' by default." do |value|
+      options[:graph_fontname] = value
+    end
+
+    o.on '--title-size', '=size', Numeric,
+        'Font size for the graph title (pt).',
+        "  #{RDot::defaults[:graph_fontsize]} by default." do |value|
+      options[:graph_fontsize] = value
+    end
+
+    o.on '--font', '=name', String, 'Font name for main text.',
+        "  '#{RDot::defaults[:node_fontname]}' by default." do |value|
+      options[:node_fontname] = value
+    end
+
+    o.on '--font-size', '=size', Numeric, 'Font size for main text (pt).',
+        "  #{RDot::defaults[:node_fontsize]} by default." do |value|
+      options[:node_fontsize] = value
+    end
+
+    o.separator "Colors:\n" +
+        '  May by RGB value or name from X11 scheme,' + "\n" +
+        '  see http://graphviz.org/content/color-names#x11.'
+
+    o.on '--color-class', '=color', String, 'Background color of class title.',
+        "  #{RDot::defaults[:color_class]} by default." do |value|
+      options[:color_class] = value
+    end
+
+    o.on '--color-class-preloaded', '=color', String,
+        'Background color of preloaded class title.',
+        "  #{RDot::defaults[:color_class_preloaded]} by default." do |value|
+      options[:color_class_preloaded] = value
+    end
+
+    o.on '--color-class-core', '=color', String,
+        'Background color of core class title.',
+        "  #{RDot::defaults[:color_class_core]} by default." do |value|
+      options[:color_class_core] = value
+    end
+
+    o.on '--color-exception', '=color', String,
+        'Background color of exception title.',
+        "  #{RDot::defaults[:color_exception]} by default." do |value|
+      options[:color_exception] = value
+    end
+
+    o.on '--color-exception-preloaded', '=color', String,
+        'Background color of preloaded exception', '  title.',
+        "  #{RDot::defaults[:color_exception_preloaded]} by default." do |value|
+      options[:color_exception_preloaded] = value
+    end
+
+    o.on '--color-exception-core', '=color', String,
+        'Background color of core exception title.',
+        "  #{RDot::defaults[:color_exception_core]} by default." do |value|
+      options[:color_exception_core] = value
+    end
+
+    o.on '--color-module', '=color', String, 'Background color of module title.',
+        "  #{RDot::defaults[:color_module]} by default." do |value|
+      options[:color_module] = value
+    end
+
+    o.on '--color-module-preloaded', '=color', String,
+        'Background color of preloaded module title.',
+        "  #{RDot::defaults[:color_module_preloaded]} by default." do |value|
+      options[:color_module_preloaded] = value
+    end
+
+    o.on '--color-protected', '=color', String,
+        'Background color for protected methods.',
+        "  #{RDot::defaults[:color_protected]} by default." do |value|
+      options[:color_protected] = value
+    end
+
+    o.on '--color-private', '=color', String,
+        'Background color for private methods.',
+        "  #{RDot::defaults[:color_private]} by default." do |value|
+      options[:color_private] = value
+    end
+
+    o.on '--color-inherited', '=color', String,
+        'Color for inheritance links.',
+        "  #{RDot::defaults[:color_inherited]} by default." do |value|
+      options[:color_inherited] = value
+    end
+
+    o.on '--color-included', '=color', String,
+        'Color for \'include\' links.',
+        "  #{RDot::defaults[:color_included]} by default." do |value|
+      options[:color_included] = value
+    end
+
+    o.on '--color-extended', '=color', String,
+        'Color for \'extend\' links.',
+        "  #{RDot::defaults[:color_extended]} by default." do |value|
+      options[:color_extended] = value
+    end
+
+    o.on '--color-nested', '=color', String,
+        'Color for nesting links.',
+        "  #{RDot::defaults[:color_nested]} by default." do |value|
+      options[:color_nested] = value
+    end
+
+  end
+
+  begin
+    [
+      '/etc/rdotopts',
+      File.expand_path('~/.config/rdotopts'),
+      File.expand_path('./.rdotopts')
+    ].each do |f|
+      if File.exists? f
+        opts.load f
+      end
+    end
+  rescue
+    raise 'Error while processing options file.'
+  end
+
+  begin
+    options[:load] += opts.parse ARGV
+  rescue
+    raise 'Error while processing command line.'
+  end
+
 end
 
 if options[:load].include?('rdot')
   options[:exclude_namespaces].delete RDot
   options[:exclude_files].delete RDot.method(:dot).source_location[0]
-end
-if options[:load].include?('optparse')
-  options[:exclude_namespaces].delete OptionParser
 end
 
 if options[:preload]
