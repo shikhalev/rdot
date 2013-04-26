@@ -493,6 +493,10 @@ else
     raise 'Error while processing command line.'
   end
 
+  if options[:load].include?('optparse')
+    options[:exclude_namespaces].delete OptionParser
+  end
+
 end
 
 if options[:load].include?('rdot')
