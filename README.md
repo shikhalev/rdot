@@ -9,6 +9,11 @@
 * [Documentation](http://rubydoc.info/github/shikhalev/rdot/frames/)
 @ [RubyDoc.info](http://rubydoc.info/)
 
+### Versions
+
+* 0.10.x — current — for Ruby 1.9.2 and later.
+* [0.9.x (0.9.4)](https://github.com/shikhalev/rdot/tree/v0.9.4) — for Ruby 1.8.7.
+
 ## Command-line help
     Usage: rdot [options] <libs>
 
