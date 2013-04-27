@@ -3,8 +3,6 @@
 require 'is/monkey/sandbox'
 require 'is/monkey/namespace'
 
-$module_hook_start = __LINE__
-
 # @api ignore
 class Module
 
@@ -69,11 +67,9 @@ class Module
 
 end
 
-$module_hook_end = __LINE__
-
 module RDot
 
-  VERSION = '0.10.8'
+  VERSION = '0.10.9'
 
   class << self
 
@@ -119,20 +115,15 @@ module RDot
       m = get_method_object mod, scope, name
       src = m.source_location
       obj = {}
-      if src
-        if src[0] == __FILE__ &&
-            ($module_hook_start..$module_hook_end).include?(src[1])
-          nm = name.to_s
-          nm = nm[0..-2] if nm[-1] == '='
-          nm = nm.intern
-          if @attributes && @attributes[mod] && @attributes[mod][scope] &&
+      nm = name.to_s
+      nm = nm[0..-2] if nm[-1] == '='
+      nm = nm.intern
+      if @attributes && @attributes[mod] && @attributes[mod][scope] &&
               @attributes[mod][scope][nm]
-            src = @attributes[mod][scope][nm][:source]
-            obj[:access] = @attributes[mod][scope][nm][:access]
-          else
-            src = ['', nil]
-          end
-        end
+        src = @attributes[mod][scope][nm][:source]
+        obj[:access] = @attributes[mod][scope][nm][:access]
+      end
+      if src
         obj[:file] = get_file src[0]
         obj[:line] = src[1]
         if opts[:exclude_files]
