@@ -69,7 +69,7 @@ end
 
 module RDot
 
-  VERSION = '0.10.10.1'
+  VERSION = '0.10.10.2'
 
   class << self
 
