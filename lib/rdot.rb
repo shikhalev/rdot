@@ -69,11 +69,11 @@ end
 
 module RDot
 
-  VERSION = '0.10.10'
+  VERSION = '0.10.10.1'
 
   class << self
 
-    # @api ignore
+    # @private
     def register_attribute mod, scope, names, access, source
       @attributes ||= {}
       @attributes[mod] ||= {}
