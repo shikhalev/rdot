@@ -673,7 +673,7 @@ module RDot
     private :get_file, :get_method_object, :get_module, :add_method,
         :add_module, :diff_module, :find_module, :dot_module, :node_name,
         :node_color, :node_label, :module_kind, :dot_constants, :dot_scope,
-        :module_stage
+        :module_stage, :escape
 
   end
 
