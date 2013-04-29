@@ -69,7 +69,7 @@ end
 
 module RDot
 
-  VERSION = '0.10.10.2'
+  VERSION = '0.10.10.3'
 
   class << self
 
@@ -610,7 +610,7 @@ module RDot
       result << '  graph['
       result << '    rankdir=LR,'
       result << '    splines=true,'
-      result << '    labelloc=t, mclimim=10,'
+      result << '    labelloc=t,'
       result << '    fontname="' + opts[:graph_fontname] + '",'
       result << '    fontsize=' + opts[:graph_fontsize].to_s + ','
       result << '    label="' + opts[:graph_label] + '"'
@@ -623,7 +623,7 @@ module RDot
       result << '  edge['
       result << '    dir=back,'
       result << '    arrowtail=vee,'
-      result << '    penwidth=0.5, arrowsize=0.7'
+      result << '    penwidth=0.5, arrowsize=0.5'
       result << '  ];'
       @processed = []
       @nested = []
@@ -637,8 +637,8 @@ module RDot
       result << '  subgraph subNested{'
       result << '    edge['
       result << '      color="' + opts[:color_nested] + '",'
-      result << '      weight=10,'
-      result << '      minlen=-1'
+      result << '      weight=8,'
+      result << '      minlen=0'
       result << '    ];'
       result << '    ' + @nested.join("\n    ")
       result << '  }'
@@ -661,7 +661,7 @@ module RDot
       result << '  subgraph subInherited{'
       result << '    edge['
       result << '      color="' + opts[:color_inherited] + '",'
-      result << '      weight=10,'
+      result << '      weight=4,'
       result << '      minlen=1'
       result << '    ];'
       result << '    ' + @inherited.join("\n    ")
