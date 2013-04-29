@@ -5,6 +5,9 @@
 <img align="right" src="http://2.bp.blogspot.com/-lCpxVOrTpZI/UX1XR7iS2LI/AAAAAAAAAx4/FBScMFBQ9Lo/s320/rdot.png" />
 
 * Author: [Ivan Shikhalev](https://github.com/shikhalev)
+
+[![endorse](https://api.coderwall.com/shikhalev/endorsecount.png)](https://coderwall.com/shikhalev)
+
 * License: {file:LICENSE.md GNU GPL}
 * [Project](https://github.com/shikhalev/rdot) @ [GitHub.com](https://github.com/)
 * [Gem](https://rubygems.org/gems/rdot) @ [RubyGems.org](https://rubygems.org)
