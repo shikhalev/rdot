@@ -12,8 +12,9 @@ Gem::Specification.new do |g|
   g.homepage = 'https://github.com/shikhalev/rdot'
   g.license = 'GNU GPL'
 
-  g.files = Dir['lib/*.rb'] + Dir['*.md'] + [ 'bin/rdot', '.yardopts' ]
-  g.executables = ['rdot']
+  g.files = Dir['lib/*.rb'] + Dir['*.md'] +
+      [ 'bin/rdot', 'bin/rbdot', '.yardopts' ]
+  g.executables = ['rdot', 'rbdot']
   g.require_path = 'lib'
   g.required_ruby_version = '>= 1.9.2'
   g.add_dependency 'is-monkey', '~> 0.4'
