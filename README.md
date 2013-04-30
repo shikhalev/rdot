@@ -4,7 +4,7 @@
 
 ## About
 
-<img src="https://raw.github.com/shikhalev/rdot/master/share/img/rdot.png" style="float : right" />
+<img src="https://raw.github.com/shikhalev/rdot/master/share/img/rdot.png" align="right" />
 
 * Author: [Ivan Shikhalev](https://github.com/shikhalev)
 * License: [GNU GPL](http://www.gnu.org/copyleft/gpl.html)
