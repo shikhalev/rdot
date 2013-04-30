@@ -5,11 +5,11 @@ require './lib/rdot'
 Gem::Specification.new do |g|
   g.name = 'rdot'
   g.version = RDot::VERSION
-  g.summary = 'GraphViz class diagrams for Ruby'
+  g.summary = 'GraphViz diagrams for Ruby classes'
   g.author = 'Ivan Shikhalev'
   g.email = 'shikhalev@gmail.com'
   g.description = g.summary + '.'
-  g.homepage = 'https://github.com/shikhalev/rdot/'
+  g.homepage = 'https://github.com/shikhalev/rdot'
   g.license = 'GNU GPL'
 
   g.files = Dir['lib/*.rb'] + Dir['*.md'] + [ 'bin/rdot', '.yardopts' ]

@@ -4,10 +4,10 @@
 
 ## About
 
-<img align="right" src="http://2.bp.blogspot.com/-lCpxVOrTpZI/UX1XR7iS2LI/AAAAAAAAAx4/FBScMFBQ9Lo/s320/rdot.png" />
+<img src="https://raw.github.com/shikhalev/rdot/master/share/img/rdot.png" style="float : right" />
 
 * Author: [Ivan Shikhalev](https://github.com/shikhalev)
-* License: {file:LICENSE.md GNU GPL}
+* License: [GNU GPL](http://www.gnu.org/copyleft/gpl.html)
 * [Project](https://github.com/shikhalev/rdot) @ [GitHub.com](https://github.com/)
 * [Gem](https://rubygems.org/gems/rdot) @ [RubyGems.org](https://rubygems.org)
 * [Documentation](http://rubydoc.info/github/shikhalev/rdot/frames/)
@@ -15,8 +15,12 @@
 
 ### Versions
 
-* 0.10.x — current — for Ruby 1.9.2 and later.
-* [0.9.x (0.9.4)](https://github.com/shikhalev/rdot/tree/v0.9.4) — for Ruby 1.8.7.
+* For Ruby 1.9.2 and later:
+  * 1.1.x — testing
+  * 1.0.x — stable
+  * 0.10.x (0.10.10.3 latest) — pre-1.0
+* For Ruby 1.8.7:
+  * [0.9.x (0.9.4 latest)](https://github.com/shikhalev/rdot/tree/v0.9.4)
 
 ## Command-line help
     Usage: rdot [options] <libs>

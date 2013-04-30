@@ -1,5 +1,6 @@
 --no-cache
 --hide-void-return
+--private
 --no-private
 --plugin yard-is-monkey
 --title 'RDot: GraphViz class diagrams for Ruby'

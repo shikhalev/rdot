@@ -3,7 +3,7 @@
 require 'is/monkey/sandbox'
 require 'is/monkey/namespace'
 
-# @api ignore
+# @private
 class Module
 
   def module_scope
@@ -69,7 +69,7 @@ end
 
 module RDot
 
-  VERSION = '0.10.10.3'
+  VERSION = '1.0.0'
 
   class << self
 
@@ -86,6 +86,7 @@ module RDot
       end
     end
 
+    # @private
     def get_file file
       src = File.expand_path file
       $:.each do |dir|
@@ -102,6 +103,7 @@ module RDot
       return file
     end
 
+    # @private
     def get_method_object mod, scope, name
       case scope
       when :instance
@@ -111,6 +113,7 @@ module RDot
       end
     end
 
+    # @private
     def add_method acc, mod, scope, visibility, name, opts
       m = get_method_object mod, scope, name
       src = m.source_location
@@ -175,6 +178,7 @@ module RDot
       return obj
     end
 
+    # @private
     def get_module mod, opts
       result = {}
       result[:module] = mod
@@ -236,6 +240,7 @@ module RDot
       result
     end
 
+    # @private
     def add_module acc, mod, opts
       if opts[:exclude_classes]
         opts[:exclude_classes].each do |c|
@@ -263,8 +268,32 @@ module RDot
       acc[mod.inspect] = get_module mod, opts
     end
 
-    # @param [Hash] opts
-    # @return [Hash]
+    # Make hash with data of objectspace.
+    #
+    # @param [Hash] opts Options (see also {dot} & {diff}).
+    # @option opts [Array<Class>] :exclude_classes don't add classes listed and
+    #                                              their descendants;
+    # @option opts [Array<String>] :exclude_files don't add methods defined in
+    #                                             files listed;
+    # @option opts [Array<Module>] :exclude_namespaces don't add classes/modules
+    #                                                  listed and their inners;
+    # @option opts [Array<Class>] :filter_classes add only classes listed and
+    #                                             their descendants;
+    # @option opts [Array<String>] :filter_files add only methods defined in
+    #                                            files listed;
+    # @option opts [Boolean] :filter_global add only classes/modules in global
+    #                                       namespace;
+    # @option opts [Array<Module>] :filter_namespaces add only classes/modules
+    #                                                 listed and their inners;
+    # @option opts [Boolean] :hide_arguments don't add arguments info to
+    #                                        methods' names;
+    # @option opts [Boolean] :hide_constants don't add constants' data;
+    # @option opts [Boolean] :hide_methods don't add methods' data;
+    # @option opts [Boolean] :select_attributes make attributes data instead
+    #                                           getter and setter methods;
+    # @option opts [Boolean] :show_private add data of private methods;
+    # @option opts [Boolean] :show_protected add data of protected methods.
+    # @return [Hash] Objectspace.
     def snapshot opts = {}
       opts = defaults.merge opts
       result = {}
@@ -272,6 +301,7 @@ module RDot
       result
     end
 
+    # @private
     def diff_module base, other, opts
       if ! other
         return base.merge :new => true
@@ -324,10 +354,14 @@ module RDot
       end
     end
 
-    # @param [Hash] base
-    # @param [Hash] other
-    # @param [Hash] opts
-    # @return [Hash]
+    # Make diff between two objectspaces.
+    #
+    # @param [Hash] base 'New' objectspace.
+    # @param [Hash] other 'Old' objectspace
+    # @param [Hash] opts Options (see also {snapshot} & {dot}).
+    # @option opts [Boolean] :show_preloaded if true old classes/modules will not
+    #                                   deleted from difference.
+    # @return [Hash] Difference objectspace.
     def diff base, other, opts = {}
       opts = defaults.merge opts
       if other == nil
@@ -341,6 +375,7 @@ module RDot
       result
     end
 
+    # @private
     def find_module space, name
       return space[name] if space[name]
       begin
@@ -351,7 +386,9 @@ module RDot
       nil
     end
 
-    # @return [Hash]
+    # Default values for {dot} options.
+    #
+    # @return [Hash] see source for details or {dot} for description.
     def defaults
       {
         :graph_fontname                 => 'sans-serif',
@@ -377,10 +414,12 @@ module RDot
       }
     end
 
+    # @private
     def node_name name
       'node_' + name.gsub(/\W/, '_')
     end
 
+    # @private
     def module_stage m
       if @preset.include? m[:module]
         :core
@@ -391,6 +430,7 @@ module RDot
       end
     end
 
+    # @private
     def node_color m, opts
       mod = m[:module]
       stg = module_stage m
@@ -426,6 +466,7 @@ module RDot
       end
     end
 
+    # @private
     def module_kind m
       stg = module_stage m
       if Class === m[:module]
@@ -439,12 +480,12 @@ module RDot
       end
     end
 
-    # @param [String] s
-    # @return [String]
+    # @private
     def escape s
       s.gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;').gsub("\n", '\n')
     end
 
+    # @private
     def dot_constants m
       result = []
       if m[:constants]
@@ -462,6 +503,7 @@ module RDot
       end
     end
 
+    # @private
     def dot_scope m, scope, opts
       result = []
       if m[scope]
@@ -535,6 +577,7 @@ module RDot
       end
     end
 
+    # @private
     def node_label name, m, opts
       result = []
       result << '<TABLE CELLBORDER="0" CELLSPACING="0">'
@@ -558,6 +601,7 @@ module RDot
       result.join ''
     end
 
+    # @private
     def dot_module space, name, m, opts
       if m == nil
         $stderr.puts "Warning: nil module by name \"#{name}\"!"
@@ -600,9 +644,43 @@ module RDot
       result.join "\n  "
     end
 
-    # @param [Hash] space
-    # @param [Hash] opts
-    # @return [String]
+    # Make .dot text from snapshot or difference.
+    #
+    # @param [Hash] space Snapshot or difference objectspace.
+    # @param [Hash] opts Options (see also {snapshot} & {diff}). This Hash will
+    #                    be merged over default values (see {defaults}).
+    # @option opts [String] :color_class class node title background color;
+    # @option opts [String] :color_class_core core class node title background
+    #                                         color;
+    # @option opts [String] :color_class_preloaded preloaded class node title
+    #                                              background color;
+    # @option opts [String] :color_exception exception node title background
+    #                                        color;
+    # @option opts [String] :color_exception_core core exception node title
+    #                                             background color;
+    # @option opts [String] :color_exception_preloaded preloaded exception node
+    #                                                  title background color;
+    # @option opts [String] :color_extended color of 'extended' edges;
+    # @option opts [String] :color_included color of 'included' edges;
+    # @option opts [String] :color_inherited color of 'inherited' edges;
+    # @option opts [String] :color_module module node title background color;
+    # @option opts [String] :color_module_core core module node title background
+    #                                          color;
+    # @option opts [String] :color_module_preloaded preloaded module title
+    #                                               background color;
+    # @option opts [String] :color_nested color of 'nested' edges;
+    # @option opts [String] :color_private background color for private methods;
+    # @option opts [String] :color_protected background color for protected
+    #                                        methods;
+    # @option opts [String] :graph_fontname font name of graph title;
+    # @option opts [Numeric] :graph_fontsize font size of graph title;
+    # @option opts [String] :graph_label graph title;
+    # @option opts [Boolean] :hide_extended if true hide 'extended' edges;
+    # @option opts [Boolean] :hide_included if true hide 'included' edges;
+    # @option opts [Boolean] :hide_nested if true hide 'nested' edges;
+    # @option opts [String] :node_fontname font name of class/module nodes;
+    # @option opts [Numeric] :node_fontsize font size of class/module nodes.
+    # @return [String] Text of .dot-file.
     def dot space, opts = {}
       opts = defaults.merge opts
       result = []
@@ -673,7 +751,7 @@ module RDot
     private :get_file, :get_method_object, :get_module, :add_method,
         :add_module, :diff_module, :find_module, :dot_module, :node_name,
         :node_color, :node_label, :module_kind, :dot_constants, :dot_scope,
-        :module_stage, :escape
+        :module_stage, :escape, :defaults
 
   end
 
