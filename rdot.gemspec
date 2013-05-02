@@ -1,6 +1,6 @@
 # encoding: utf-8
 
-require './lib/rdot'
+require './lib/rdot-common'
 
 Gem::Specification.new do |g|
   g.name = 'rdot'

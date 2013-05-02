@@ -2,6 +2,7 @@
 
 require 'is/monkey/sandbox'
 require 'is/monkey/namespace'
+require 'rdot-common'
 
 # @private
 class Module
@@ -69,8 +70,6 @@ end
 
 module RDot
 
-  VERSION = '1.1.0'
-
   class << self
 
     # @private
@@ -84,23 +83,6 @@ module RDot
           :source => source
         }
       end
-    end
-
-    # @private
-    def get_file file
-      src = File.expand_path file
-      $:.each do |dir|
-        dir = File.expand_path dir
-        len = dir.length
-        if src[0...len] == dir
-          src = src[len..-1]
-          if src[0] == '/'
-            src = src[1..-1]
-          end
-          return src
-        end
-      end
-      return file
     end
 
     # @private
@@ -619,13 +601,13 @@ module RDot
       if m[:nested] && ! opts[:hide_nested]
         ns = find_module space, m[:nested]
         result << dot_module(space, m[:nested], ns, opts)
-        @nested << node_name(m[:nested]) + ' -> ' + node_name(name) + ';'
+        @nested << node_name(name) + ' -> ' + node_name(m[:nested]) + ';'
       end
       if ! opts[:hide_extended]
         m[:extended].each do |e|
           ext = find_module space, e
           result << dot_module(space, e, ext, opts)
-          @extended << node_name(e) + ' -> ' + node_name(name) + ';'
+          @extended << node_name(name) + ' -> ' + node_name(e) + ';'
         end
       end
       if ! opts[:hide_included]
@@ -633,13 +615,13 @@ module RDot
           next if m[:module].name == 'CMath' && i == 'Math'
           inc = find_module space, i
           result << dot_module(space, i, inc, opts)
-          @included << node_name(i) + ' -> ' + node_name(name) + ';'
+          @included << node_name(name) + ' -> ' + node_name(i) + ';'
         end
       end
       if m[:superclass]
         spc = find_module space, m[:superclass]
         result << dot_module(space, m[:superclass], spc, opts)
-        @inherited << node_name(m[:superclass]) + ' -> ' + node_name(name) + ';'
+        @inherited << node_name(name) + ' -> ' + node_name(m[:superclass]) + ';'
       end
       result.join "\n  "
     end
@@ -686,7 +668,7 @@ module RDot
       result = []
       result << 'digraph graph_RDot{'
       result << '  graph['
-      result << '    rankdir=LR,'
+      result << '    rankdir=RL,'
       result << '    splines=true,'
       result << '    labelloc=t,'
       result << '    fontname="' + opts[:graph_fontname] + '",'
@@ -699,8 +681,8 @@ module RDot
       result << '    fontsize=' + opts[:node_fontsize].to_s + ''
       result << '  ];'
       result << '  edge['
-      result << '    dir=back,'
-      result << '    arrowtail=vee,'
+#      result << '    dir=back,'
+      result << '    arrowhead=vee,'
       result << '    penwidth=0.5, arrowsize=0.5'
       result << '  ];'
       @processed = []
@@ -748,7 +730,7 @@ module RDot
       result.join "\n"
     end
 
-    private :get_file, :get_method_object, :get_module, :add_method,
+    private :get_method_object, :get_module, :add_method,
         :add_module, :diff_module, :find_module, :dot_module, :node_name,
         :node_color, :node_label, :module_kind, :dot_constants, :dot_scope,
         :module_stage, :escape
