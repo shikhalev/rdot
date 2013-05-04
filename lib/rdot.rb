@@ -378,15 +378,24 @@ module RDot
         :graph_label                    => 'RDot Graph',
         :node_fontname                  => 'monospace',
         :node_fontsize                  => 9,
-        :color_class                    => '#BBFFBB',
-        :color_class_preloaded          => '#CCEECC',
-        :color_class_core               => '#DDFF99',
-        :color_exception                => '#FFBBBB',
-        :color_exception_preloaded      => '#EECCCC',
-        :color_exception_core           => '#FFDD99',
-        :color_module                   => '#BBBBFF',
-        :color_module_preloaded         => '#CCCCEE',
-        :color_module_core              => '#99DDFF',
+        :color_class                    => '#77FF77',
+        :color_class_preloaded          => '#AAFFAA',
+        :color_class_core               => '#DDFFDD',
+        :color_exception                => '#FF7777',
+        :color_exception_preloaded      => '#FFAAAA',
+        :color_exception_core           => '#FFDDDD',
+        :color_module                   => '#9999FF',
+        :color_module_preloaded         => '#BBBBFF',
+        :color_module_core              => '#DDDDFF',
+#         :color_class                    => '#BBFFBB',
+#         :color_class_preloaded          => '#CCEECC',
+#         :color_class_core               => '#DDFF99',
+#         :color_exception                => '#FFBBBB',
+#         :color_exception_preloaded      => '#EECCCC',
+#         :color_exception_core           => '#FFDD99',
+#         :color_module                   => '#BBBBFF',
+#         :color_module_preloaded         => '#CCCCEE',
+#         :color_module_core              => '#99DDFF',
         :color_protected                => '#EEEEEE',
         :color_private                  => '#DDDDDD',
         :color_inherited                => '#0000FF',
@@ -598,6 +607,9 @@ module RDot
       result << node_name(name) + '['
       result << '  label=<' + node_label(name, m, opts) + '>'
       result << '];'
+      if opts[:hide_nested] || ! m[:module].namespace #) && ! (Class === m[:module]) && ! (m[:module] == Kernel)
+        result << node_name(name) + ' -> nullnode[color=transparent,minlen=0,weight=1];'
+      end
       if m[:nested] && ! opts[:hide_nested]
         ns = find_module space, m[:nested]
         result << dot_module(space, m[:nested], ns, opts)
@@ -669,8 +681,8 @@ module RDot
       result << 'digraph graph_RDot{'
       result << '  graph['
       result << '    rankdir=RL,'
-      result << '    splines=true,'
-      result << '    labelloc=t,'
+      result << '    splines=spline,'
+      result << '    labelloc=t,searchsize=1000,'
       result << '    fontname="' + opts[:graph_fontname] + '",'
       result << '    fontsize=' + opts[:graph_fontsize].to_s + ','
       result << '    label="' + opts[:graph_label] + '"'
@@ -682,9 +694,11 @@ module RDot
       result << '  ];'
       result << '  edge['
 #      result << '    dir=back,'
-      result << '    arrowhead=vee,'
+#      result << '    arrowhead=vee,'
       result << '    penwidth=0.5, arrowsize=0.5'
       result << '  ];'
+      result << '  nullnode[label=""];'
+#      result << '  nullnode -> ' + node_name('Kernel') + '[color=yellow,weight=0,minlen=0];'
       @processed = []
       @nested = []
       @extended = []
@@ -697,7 +711,7 @@ module RDot
       result << '  subgraph subNested{'
       result << '    edge['
       result << '      color="' + opts[:color_nested] + '",'
-      result << '      weight=8,'
+      result << '      weight=1,'
       result << '      minlen=0'
       result << '    ];'
       result << '    ' + @nested.join("\n    ")
