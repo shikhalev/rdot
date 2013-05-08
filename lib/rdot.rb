@@ -69,7 +69,7 @@ end
 
 module RDot
 
-  VERSION = '1.0.1'
+  VERSION = '1.0.2'
 
   class << self
 
@@ -214,10 +214,10 @@ module RDot
         end
       end
       if ! opts[:hide_methods]
-        mod.instance_methods(false).each do |m|
+        mod.public_instance_methods(false).each do |m|
           add_method result, mod, :instance, :public, m, opts
         end
-        mod.singleton_class.instance_methods(false).each do |m|
+        mod.singleton_class.public_instance_methods(false).each do |m|
           add_method result, mod, :class, :public, m, opts
         end
         if opts[:show_protected]
