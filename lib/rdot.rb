@@ -58,9 +58,6 @@ class Module
   end
 
   def attr_accessor *names
-    if names.include? :beta
-      $stderr.puts caller
-    end
     RDot.register_attribute *module_scope, names, '[rw]', parse_caller(caller)
     rdot_old_attr_accessor *names
   end
