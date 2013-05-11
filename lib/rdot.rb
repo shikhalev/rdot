@@ -70,6 +70,7 @@ end
 
 module RDot
 
+  
   class << self
 
     # @private
