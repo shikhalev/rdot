@@ -31,7 +31,7 @@ class Module
   def parse_caller clr
     clr.each do |s|
       if s.include?('`<module:') || s.include?('`<class:') ||
-          s.include?("`singletonclass'")
+          s.include?("`singletonclass'") || s.include?('`block in <')
         a = s.split(':')
         begin
           return [a[0], a[1].to_i]
@@ -58,6 +58,9 @@ class Module
   end
 
   def attr_accessor *names
+    if names.include? :beta
+      $stderr.puts caller
+    end
     RDot.register_attribute *module_scope, names, '[rw]', parse_caller(caller)
     rdot_old_attr_accessor *names
   end
