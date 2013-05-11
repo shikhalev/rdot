@@ -30,7 +30,7 @@ class Module
   def parse_caller clr
     clr.each do |s|
       if s.include?('`<module:') || s.include?('`<class:') ||
-          s.include?("`singletonclass'")
+          s.include?("`singletonclass'") || s.include?('`block in <')
         a = s.split(':')
         begin
           return [a[0], a[1].to_i]
@@ -69,7 +69,7 @@ end
 
 module RDot
 
-  VERSION = '1.0.2'
+  VERSION = '1.0.3'
 
   class << self
 
