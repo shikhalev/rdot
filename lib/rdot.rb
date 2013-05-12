@@ -295,8 +295,10 @@ module RDot
       result[:module] = base[:module]
       result[:superclass] = base[:superclass]
       result[:nested] = base[:nested]
-      result[:included] = base[:included] - other[:included]
-      result[:extended] = base[:extended] - other[:extended]
+      result[:included] = base[:included] # - other[:included]
+      test_included = base[:included] - other[:included]
+      result[:extended] = base[:extended] # - other[:extended]
+      test_extended = base[:extended] - other[:extended]
       result[:constants] = {}
       if base[:constants]
         base[:constants].each do |c|
@@ -324,7 +326,7 @@ module RDot
           end
         end
       end
-      if result[:included].empty? && result[:extended].empty? &&
+      if test_included.empty? && test_extended.empty? &&
           result[:constants].empty? && result[:class].nil? &&
           result[:instance].nil?
         nil
