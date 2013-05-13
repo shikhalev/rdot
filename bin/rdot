@@ -385,6 +385,24 @@ else
       options[:node_fontsize] = value
     end
 
+    o.separator ''
+
+    o.on '--graph-splines', '=mode',
+        [
+          'none',
+          'line',
+          'polyline',
+          'curved',
+          'ortho',
+          'spline',
+          'true',
+          'false'
+        ],
+        'Edges form in graph.',
+        "  '#{RDot::defaults[:graph_splines]}' by default." do |value|
+      options[:graph_splines] = value
+    end
+
     o.separator "Colors:\n" +
         '  May by RGB value or name from X11 scheme,' + "\n" +
         '  see http://graphviz.org/content/color-names#x11.'

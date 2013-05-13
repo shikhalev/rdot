@@ -113,6 +113,9 @@
                                            'monospace' by default.
             --font-size=size             Font size for main text (pt).
                                            9 by default.
+
+            --graph-splines=mode         Edges form in graph.
+                                           'spline' by default.
     Colors:
       May be RGB value or name from X11 scheme,
       see http://graphviz.org/content/color-names#x11.

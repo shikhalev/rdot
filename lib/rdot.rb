@@ -403,7 +403,8 @@ module RDot
         :color_inherited                => '#0000FF',
         :color_included                 => '#00AAFF',
         :color_extended                 => '#AA00FF',
-        :color_nested                   => '#EEEEEE'
+        :color_nested                   => '#EEEEEE',
+        :graph_splines                  => 'spline'
       }
     end
 
@@ -683,7 +684,7 @@ module RDot
       result << 'digraph graph_RDot{'
       result << '  graph['
       result << '    rankdir=RL,'
-      result << '    splines=spline,'
+      result << '    splines=' + opts[:graph_splines] + ','
       result << '    labelloc=t,searchsize=1000,'
       result << '    fontname="' + opts[:graph_fontname] + '",'
       result << '    fontsize=' + opts[:graph_fontsize].to_s + ','
