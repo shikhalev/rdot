@@ -1,5 +1,6 @@
 # encoding: utf-8
 
+require 'is/build'
 require './lib/rdot-common'
 
 Gem::Specification.new do |g|
@@ -15,6 +16,9 @@ Gem::Specification.new do |g|
   g.files = Dir['lib/*.rb'] + Dir['*.md'] +
       [ 'bin/rdot', 'bin/rbdot', '.yardopts' ]
   g.executables = ['rdot', 'rbdot']
+
+  g.mkbuild 'pre'
+
   g.require_path = 'lib'
   g.required_ruby_version = '>= 1.9.2'
   g.add_dependency 'is-monkey', '~> 0.4'
