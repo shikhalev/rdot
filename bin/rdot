@@ -435,6 +435,12 @@ else
       options[:color_module_preloaded] = value
     end
 
+    o.on '--color-module-core', '=color', String,
+        'Background color of core module title.',
+        "  #{RDot::defaults[:color_module_core]} by default." do |value|
+      options[:color_module_core] = value
+    end
+
     o.on '--color-protected', '=color', String,
         'Background color for protected methods.',
         "  #{RDot::defaults[:color_protected]} by default." do |value|

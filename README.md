@@ -136,6 +136,8 @@
             --color-module-preloaded=color
                                          Background color of preloaded module title.
                                            #CCCCEE by default.
+            --color-module-core=color    Background color of core module title.
+                                           #DDDDFF by default.
             --color-protected=color      Background color for protected methods.
                                            #EEEEEE by default.
             --color-private=color        Background color for private methods.
