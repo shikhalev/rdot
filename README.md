@@ -16,9 +16,9 @@
 ### Versions
 
 * For Ruby 1.9.x and 2.0
-  * [1.1.x — testing](https://github.com/shikhalev/rdot/tree/master)
+  * [1.1.x — current](https://github.com/shikhalev/rdot/tree/master)
 * For Ruby 1.9.2 and later:
-  * [1.0.x — stable](https://github.com/shikhalev/rdot/tree/fixes)
+  * [1.0.x — oldstable](https://github.com/shikhalev/rdot/tree/fixes)
   * 0.10.x (0.10.10.3 latest) — pre-1.0
 * For Ruby 1.8.7:
   * [0.9.x (0.9.4 latest)](https://github.com/shikhalev/rdot/tree/v0.9.4)
