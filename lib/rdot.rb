@@ -147,6 +147,12 @@ module RDot
               "#{nm} = <…>"
             when :rest
               "*#{nm}"
+            when :key
+              "#{nm}: <…>"
+            when :reqkey, :keyreq
+              "#{nm}:"
+            when :keyrest
+              "**#{nm}"
             when :block
               "&#{nm}"
             end

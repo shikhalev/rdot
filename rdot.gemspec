@@ -17,7 +17,7 @@ Gem::Specification.new do |g|
       [ 'bin/rdot', 'bin/rbdot', '.yardopts' ]
   g.executables = ['rdot', 'rbdot']
 
-  g.mkbuild 'pre'
+  g.mkbuild
 
   g.require_path = 'lib'
   g.required_ruby_version = '>= 1.9.2'
