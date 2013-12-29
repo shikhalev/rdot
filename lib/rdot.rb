@@ -149,7 +149,7 @@ module RDot
               "*#{nm}"
             when :key
               "#{nm}: <…>"
-            when :reqkey, :keyreq
+            when :keyreq
               "#{nm}:"
             when :keyrest
               "**#{nm}"
