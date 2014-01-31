@@ -192,6 +192,7 @@ module RDot
         result[:constants] = {}
         mod.constants(false).each do |c|
           next if mod == Object && c == :Config
+          begin
           if (auto = mod.autoload?(c))
             result[:constants][c] = 'auto:' + get_file(auto)
           elsif mod.const_defined? c
@@ -199,6 +200,9 @@ module RDot
           else
             result[:constants][c] = 'undefined'
           end
+          rescue NameError
+            result[:constants][c] = 'invalid'
+        end
         end
       end
       if ! opts[:hide_methods]
@@ -604,8 +608,9 @@ module RDot
     # @private
     def dot_module space, name, m, opts
       if m == nil
-        $stderr.puts "Warning: nil module by name \"#{name}\"!"
-        return nil
+        # $stderr.puts "Warning: nil module by name \"#{name}\"!"
+        # return nil
+        m = get_module eval(name), no_scan: true
       end
       if @processed.include?(m[:module])
         return nil
