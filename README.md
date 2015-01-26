@@ -1,6 +1,7 @@
 # RDot — GraphViz diagrams for Ruby classes
 
 [![endorse](https://api.coderwall.com/shikhalev/endorsecount.png)](https://coderwall.com/shikhalev)
+[![Gem Version](https://badge.fury.io/rb/rdot.svg)](http://badge.fury.io/rb/rdot)
 
 ## About
 
