@@ -1,3 +1,4 @@
+[![Stories in Ready](https://badge.waffle.io/shikhalev/rdot.png?label=ready&title=Ready)](https://waffle.io/shikhalev/rdot)
 # RDot — GraphViz diagrams for Ruby classes
 
 [![Gem Version](https://badge.fury.io/rb/rdot.svg)](http://badge.fury.io/rb/rdot)
