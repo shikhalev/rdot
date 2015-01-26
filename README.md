@@ -1,6 +1,7 @@
 # RDot — GraphViz diagrams for Ruby classes
 
 [![Gem Version](https://badge.fury.io/rb/rdot.svg)](http://badge.fury.io/rb/rdot)
+[![GNU GPLv3](https://img.shields.io/badge/license-GPLv3-red.svg?style=flat)](http://www.gnu.org/copyleft/gpl.html)
 [![Code Climate](https://codeclimate.com/github/shikhalev/rdot/badges/gpa.svg)](https://codeclimate.com/github/shikhalev/rdot)
 
 ## About
